@@ -1,19 +1,32 @@
 /********************************************************************************************* */
-//    Eduboard2 ESP32-S3 Template with BSP
-//    Author: Martin Burger
-//    Juventus Technikerschule
+//    Projekt:  QAM
+//    Author:   Michael Mächler
+//              Ignacio Neuhaus
+//              Remo Bachmann
+//              Sandro Alder
+//    Dozent:   Martin Burger
+//    Juventus Technikerschule - Embedded Systems
 //    Version: 1.0.0
 //    
-//    This is the ideal starting point for a new Project. BSP for most of the Eduboard2
-//    Hardware is included under components/eduboard2.
-//    Hardware support can be activated/deactivated in components/eduboard2/eduboard2_config.h
+//    *insert projekt description here*
+//    
+//    
 /********************************************************************************************* */
 #include "eduboard2.h"
 #include "memon.h"
 
 #include "math.h"
 
-#define TAG "TEMPLATE"
+#include "AdcDataRelay.h"
+#include "DacDataRelay.h"
+#include "DataProvider.h"
+#include "GuiDriver.h"
+#include "PacketDecoder.h"
+#include "PacketEncoder.h"
+#include "QamDemodulator.h"
+#include "QamModulator.h"
+
+#define TAG "QAM"
 
 #define UPDATETIME_MS 100
 
@@ -35,6 +48,16 @@ void app_main()
 {
     //Initialize Eduboard2 BSP
     eduboard2_init();
+
+    //Initialize QAM components
+    InitAdcDataRelay();
+    InitDacDataRelay();
+    InitDataProvider();
+    InitGuiDriver();
+    InitPacketDecoder();
+    InitPacketEncoder();
+    InitQamDemodulator();
+    InitQamModulator();
     
     //Create templateTask
     xTaskCreate(templateTask,   //Subroutine
