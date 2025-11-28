@@ -32,8 +32,9 @@
 
 void templateTask(void* param) {
     //Init stuff here
-    vTaskDelay(100);
+    vTaskDelay(10);
     for(;;) {
+        vTaskDelay(10);
         // task main loop
         if(button_get_state(SW0, true) == SHORT_PRESSED) {
             led_toggle(LED0);
@@ -41,8 +42,8 @@ void templateTask(void* param) {
         led_toggle(LED7);
         // delay
         vTaskDelay(UPDATETIME_MS/portTICK_PERIOD_MS);
-
-        Qam_Burst(0x1234567890FBCDA);
+        
+        Qam_Burst(0x0F0F0F0F0F0F0F0F);
     }
 }
 

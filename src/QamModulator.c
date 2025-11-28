@@ -13,13 +13,13 @@
 #include "QamModulator.h"
 
 
-#define Ampl_factor 0.177f
+#define Ampl_factor 0.177f         // entspricht 1.5Vpp
 
-// 1kHz Frequenz
-#define QAM_TABLE_SIZE 127       // Anzahl Samples pro Sinusperiode
+// Samplerate 50 uS
+#define QAM_TABLE_SIZE  127       // 127 Samples pro Sinusperiode => 157.48 Hz
 
-#define Nr_Waves        127      //2*Anzahl Bits
-
+#define Nr_Waves        127       //2*Anzahl Bits
+#define Offset          127       // 127=> 1V
 
 static int8_t sinetable[QAM_TABLE_SIZE];
 static int8_t cosinetable[QAM_TABLE_SIZE];
@@ -28,14 +28,13 @@ static uint8_t Stream_Data[QAM_TABLE_SIZE];
 
 
 void dacCallbackFunction() {
-    dac_load_stream_data(Stream_Data, Stream_Data);
+    
 }
 
 
 void InitQamModulator(){
 
     void eduboard_init_dac();
-
 
     // Sinus und Cosiunustabelle erzeugen
     for (int i = 0; i < QAM_TABLE_SIZE; i++) {
@@ -71,10 +70,9 @@ bool Qam_Burst(uint64_t Data){
 
         for (int i = 0; i < QAM_TABLE_SIZE; i++) {
             int val = (int)(Ampl_factor * (sinetable[i] * I + cosinetable[i] * Q));
-            Stream_Data[i] = 127 + val;  // Offset für DAC 0..255
+            Stream_Data[i] = Offset + val;  // Offset für DAC
         }
 
-        dac_set_stream_callback(&dacCallbackFunction);
         dac_load_stream_data(Stream_Data, Stream_Data);
     }
 
