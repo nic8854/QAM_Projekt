@@ -41,6 +41,8 @@ void templateTask(void* param) {
         led_toggle(LED7);
         // delay
         vTaskDelay(UPDATETIME_MS/portTICK_PERIOD_MS);
+
+        Qam_Burst(0x1234567890FBCDA);
     }
 }
 
