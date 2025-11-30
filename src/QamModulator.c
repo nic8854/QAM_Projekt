@@ -67,13 +67,16 @@ bool Qam_Burst(uint64_t Data){
         int8_t I = map[i_bits];
         int8_t Q = map[q_bits];
         
-
+        
         for (int i = 0; i < QAM_TABLE_SIZE; i++) {
             int val = (int)(Ampl_factor * (sinetable[i] * I + cosinetable[i] * Q));
             Stream_Data[i] = Offset + val;  // Offset für DAC
         }
 
-        dac_load_stream_data(Stream_Data, Stream_Data);
+        for (int i = 0; i < 2; i++)
+        {
+            dac_load_stream_data(Stream_Data, Stream_Data);
+        }  
     }
 
     return true;
