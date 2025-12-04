@@ -13,7 +13,7 @@
 // DataProvider task
 // -----------------------------------------------------------------------------
 
-static void DataProviderTask(void *pvParameters)
+void DataProviderTask(void *pvParameters)
 {
     (void)pvParameters;
 

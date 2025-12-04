@@ -69,6 +69,6 @@ void app_main()
                 NULL);          //Taskhandle
     for(;;) {
         vTaskDelay(2000/portTICK_PERIOD_MS);
-        ESP_LOGI(TAG, "Hello Eduboard");
+        //ESP_LOGI(TAG, "Hello Eduboard");
     }
 }
