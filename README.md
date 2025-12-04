@@ -1,5 +1,4 @@
-# API Documentation
-## Component Diagram
+# Component Diagram
 
 ```mermaid
 flowchart TD
@@ -13,3 +12,70 @@ QamDemodulator -->|uint8_t binary queue| PacketDecoder;
 PacketDecoder -->|uint32_t binary queue| GuiDriver;
 ```
 
+# Module Documentation
+## DataProvider
+### Description
+This module provides data to PacketEncoder. It is currently only planned to support an internal buffer with test data, but more options like sending sensor data can be added in the future.
+### API
+<b>void DataProvider_init();</b><br>
+This function initializes the module
+
+## PacketEncoder
+### Description
+This module takes raw data input in via it's receive function and translates it into binary packages.
+### API
+<b>void PacketEncoder_init();</b><br>
+This function initializes the module
+
+<b>bool PacketEncoder_receiveData(uint32_t data);</b><br>
+This function is responsible for feeding the internal package queue in which the data to be translated into packets is stored.
+
+## QamModulator
+### Description
+This module takes packets and modulates the binary data into a sine wave using QAM modulation.
+### API
+<b>void QamModulator_init();</b><br>
+This function initializes the module
+
+<b>bool QamModulator_receivePacket(uint64_t packet);</b><br>
+This function is responsible for feeding the internal package queue in which the packets to be modulated are stored.
+
+## DacDataRelay
+### Description
+This module is symbolic and represents the input of data into the DAC using DMA.
+### API
+<b>void dac_load_stream_data(uint8_t* dataA, uint8_t* dataB);</b><br>
+This function is responsible for feeding the DAC with sine wave data
+
+## AdcDataRelay
+### Description
+This module is symbolic and represents the the interrupt routine triggered by the ADC.
+### API
+
+## QamDemodulator
+### Description
+This module is responsible for demodulating the sine wave signal received by the DAC.<br>
+It is also responsible for terminating incomplete packages.
+### API
+<b>void QamDemodulator_init();</b><br>
+This function initializes the module
+
+## PacketDecoder
+### Description
+This module is responsible for the translating of packages into plain data.<br>
+It provides the decoded data for the GUI.
+### API
+<b>void PacketDecoder_init();</b><br>
+This function initializes the module
+<b>bool PacketDecoder_receivePacket(uint64_t packet);</b><br>
+This function is responsible for feeding the internal package queue in which the packages to be translated are stored.
+
+## GuiDriver
+### Description
+This module displays the received value as well as displaying different statistics on how the system is performing.
+### API
+#### Init Function
+<b>void InitDataProvider();</b><br>
+This function initializes the module
+<b>bool GuiDriver_receiveData(uint32_t data);</b><br>
+This function is responsible for feeding the internal package queue in which the data to be displayed on screen is stored.
