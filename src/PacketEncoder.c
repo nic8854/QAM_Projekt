@@ -5,3 +5,7 @@
 void InitPacketEncoder(){
 
 }
+
+bool PacketEncoder_receiveData(){
+    return true;
+}
