@@ -12,6 +12,18 @@ QamDemodulator -->|uint8_t binary queue| PacketDecoder;
 PacketDecoder -->|uint32_t binary queue| GuiDriver;
 ```
 
+# Protocol specification
+| byte # | content   | description |
+|--------|-----------|-------------|
+| 1      | SYNC      | pulse to synchronize the pulse as well as the amplitude of the signal      |
+| 2      | CMD       | describes the type of data being transmitted                               |
+| 3      | PARAM     | can be used differntly depending on CMD, but is mainly used as an iterator |
+| 4      | DATA 1    | data byte 1 (MSB)                                                          |
+| 5      | DATA 2    | data byte 2                                                                |
+| 6      | DATA 3    | data byte 3                                                                |
+| 7      | DATA 4    | data byte 4 (LSB)                                                          |
+| 8      | CHECKSUM  | calculated checksum to confirm package validity                            |
+
 # Module Documentation
 ## DataProvider
 ### Description
