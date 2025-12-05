@@ -37,7 +37,7 @@ void templateTask(void* param) {
         vTaskDelay(10);
         // task main loop
         if(button_get_state(SW0, true) == SHORT_PRESSED) {
-            Qam_Burst(0xF123456789ABCD0);
+            Qam_Burst(0xF123456789ABCD0F);
         }
         led_toggle(LED7);
         // delay
