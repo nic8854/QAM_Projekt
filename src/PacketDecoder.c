@@ -23,8 +23,10 @@ static void PacketDecoder_task(void *pvParameters) {
             ESP_LOGI(TAG, "Received packet: 0x%llX", packet);
             switch(PacketDecoder_getCmd__(packet)) {
                 case 0x10: {
-                    float data = (float)PacketDecoder_getData__(packet);
-                    ESP_LOGI(TAG, "Temperature command received: %.2fC", data);
+                    uint32_t data = PacketDecoder_getData__(packet);
+                    float temperature;
+                    memcpy(&temperature, &data, sizeof(float));
+                    ESP_LOGI(TAG, "Temperature command received: %.2fC", temperature);
                     break;
                 }
                 default:
@@ -59,11 +61,11 @@ bool PacketDecoder_receivePacket(uint64_t packet) {
 }
 
 uint8_t PacketDecoder_getCmd__(uint64_t packet) {
-    return (uint8_t)((packet & 0x00FF000000000000) >> 56);
+    return (uint8_t)((packet & 0x00FF000000000000) >> 48);
 }
 
 uint8_t PacketDecoder_getParam__(uint64_t packet) {
-    return (uint8_t)((packet & 0x0000FF0000000000) >> 48);
+    return (uint8_t)((packet & 0x0000FF0000000000) >> 40);
 }
 
 uint32_t PacketDecoder_getData__(uint64_t packet) {
