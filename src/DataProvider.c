@@ -39,7 +39,7 @@ void DataProvider_task(void *pvParameters)
         sampleCounter++;
 
         // Debug
-        ESP_LOGI(TAG, "Temp=%.4f°C -> payload=0x%04X", temperature, payload);
+        //ESP_LOGI(TAG, "Temp=%.4f°C -> payload=0x%04X", temperature, payload);
 
         // auf nächste Periode warten
         vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(DATAPROVIDER_PERIOD_MS));
