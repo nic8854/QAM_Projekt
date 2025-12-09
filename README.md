@@ -90,6 +90,7 @@ It provides the decoded data for the GUI.
 ### API
 <b>void PacketDecoder_init();</b><br>
 This function initializes the module
+
 <b>bool PacketDecoder_receivePacket(uint64_t packet);</b><br>
 This function is responsible for feeding the internal package queue in which the packages to be translated are stored.
 
@@ -100,5 +101,6 @@ This module displays the received value as well as displaying different statisti
 #### Init Function
 <b>void GuiDriver_init();</b><br>
 This function initializes the module
+
 <b>bool GuiDriver_receiveData(uint32_t data);</b><br>
 This function is responsible for feeding the internal package queue in which the data to be displayed on screen is stored.
