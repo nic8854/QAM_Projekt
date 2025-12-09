@@ -26,7 +26,9 @@ void DataProvider_task(void *pvParameters)
         float temperature = tmp112_get_value();
 
         // 32-Bit Payload
-        uint32_t payload = (uint32_t) temperature;
+        uint32_t payload;
+
+        memcpy(&payload, &temperature, sizeof(float));
 
         // in PacketEncoder schieben
         if (!PacketEncoder_receiveData(payload))
@@ -39,7 +41,7 @@ void DataProvider_task(void *pvParameters)
         sampleCounter++;
 
         // Debug
-        //ESP_LOGI(TAG, "Temp=%.4f°C -> payload=0x%04X", temperature, payload);
+        //ESP_LOGI(TAG, "Temp=%.4f°C -> payload=0x%08X", temperature, payload);
 
         // auf nächste Periode warten
         vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(DATAPROVIDER_PERIOD_MS));
