@@ -3,4 +3,4 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void InitDataProvider();
+void DataProvider_init();
