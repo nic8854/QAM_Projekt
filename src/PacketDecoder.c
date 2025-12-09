@@ -2,6 +2,6 @@
 
 #include "math.h"
 
-void InitPacketDecoder(){
+void PacketDecoder_init(){
 
 }
