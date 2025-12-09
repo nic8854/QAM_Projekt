@@ -53,7 +53,7 @@ void app_main()
     //Initialize QAM components
     InitAdcDataRelay();
     InitDacDataRelay();
-    InitDataProvider();
+    DataProvider_init();
     InitGuiDriver();
     PacketDecoder_init();
     InitPacketEncoder();
