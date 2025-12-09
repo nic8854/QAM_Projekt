@@ -11,12 +11,26 @@ static const char *TAG = "PacketDecoder";
 static QueueHandle_t packetQueue = NULL;
 static TaskHandle_t PacketDecoder_taskHandle = NULL;
 
+uint8_t PacketDecoder_getCmd__(uint64_t packet);
+uint8_t PacketDecoder_getParam__(uint64_t packet);
+uint32_t PacketDecoder_getData__(uint64_t packet);
+
 static void PacketDecoder_task(void *pvParameters) {
     uint64_t packet;
     
     while (1) {
         if (xQueueReceive(packetQueue, &packet, portMAX_DELAY) == pdTRUE) {
             ESP_LOGI(TAG, "Received packet: 0x%llX", packet);
+            switch(PacketDecoder_getCmd__(packet)) {
+                case 0x10: {
+                    float data = (float)PacketDecoder_getData__(packet);
+                    ESP_LOGI(TAG, "Temperature command received: %.2fC", data);
+                    break;
+                }
+                default:
+                    ESP_LOGW(TAG, "Unknown command: 0x%02X", PacketDecoder_getCmd__(packet));
+                    break;
+            }
         }
     }
 }
@@ -42,4 +56,16 @@ bool PacketDecoder_receivePacket(uint64_t packet) {
     
     bool result = xQueueSend(packetQueue, &packet, 0);
     return result;
+}
+
+uint8_t PacketDecoder_getCmd__(uint64_t packet) {
+    return (uint8_t)((packet & 0x00FF000000000000) >> 56);
+}
+
+uint8_t PacketDecoder_getParam__(uint64_t packet) {
+    return (uint8_t)((packet & 0x0000FF0000000000) >> 48);
+}
+
+uint32_t PacketDecoder_getData__(uint64_t packet) {
+    return (uint32_t)(packet & 0x00000000FFFFFFFF);
 }
