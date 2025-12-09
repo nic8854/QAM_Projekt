@@ -1,3 +1,3 @@
 #pragma once
 
-void InitPacketDecoder();
+void PacketDecoder_init();
