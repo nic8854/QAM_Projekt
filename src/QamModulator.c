@@ -15,11 +15,11 @@
 
 #define Ampl_factor 0.177f         // entspricht 1.5Vpp
 
-// Samplerate 50 uS
-#define QAM_TABLE_SIZE  127       // 127 Samples pro Sinusperiode => 157.48 Hz
+// Samplerate 100 uS
+#define QAM_TABLE_SIZE  127       // 127 Samples pro Sinusperiode => 78.74 Hz
 
 #define Anz_Bits        64       // Anzahl Bits
-#define Offset          127       // 127=> 1V
+#define Offset          211       // 211=> 1.65V
 
 static int8_t sinetable[QAM_TABLE_SIZE];
 static int8_t cosinetable[QAM_TABLE_SIZE];
@@ -39,10 +39,10 @@ void InitQamModulator(){
     // Sinus und Cosiunustabelle erzeugen
     for (int i = 0; i < QAM_TABLE_SIZE; i++) {
         float val = sinf(2.0f * M_PI * i / QAM_TABLE_SIZE); // -1..1
-        sinetable[i] = (int8_t)(val * 127);                // -127..127
+        sinetable[i] = (int8_t)(val * 127);                 // -127..127
 
-        val = cosf(2.0f * M_PI * i / QAM_TABLE_SIZE);      // -1..1
-        cosinetable[i] = (int8_t)(val * 127);             // -127..127
+        val = cosf(2.0f * M_PI * i / QAM_TABLE_SIZE);       // -1..1
+        cosinetable[i] = (int8_t)(val * 127);               // -127..127
     }
 
     // 2️⃣ DAC konfigurieren
@@ -73,7 +73,7 @@ void Qam_DAC_Stream(int8_t I, int8_t Q)
 bool Qam_Burst(uint64_t Data){
 
     // Sartsequenz => Muster für 0
-    Qam_DAC_Stream (-3,-3);
+    //Qam_DAC_Stream (-3,-3);
     
     for (int w = 0; w < (Anz_Bits/4); w++)
     {

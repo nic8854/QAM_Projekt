@@ -283,6 +283,18 @@ uint32_t adc_get_buffer(uint8_t adc_channel, uint16_t* buffer) {
 #endif
 }
 
+uint32_t adc_get_QAM_buffer(int8_t invert, float scale, uint16_t Offset,uint8_t adc_channel, int16_t* buffer) {
+#ifdef CONFIG_ADC_STREAMING_BUFFERSIZE
+    if(channelmap_ANX_TO_ADCX[adc_channel] == -1) return 0;
+    for(uint32_t i = 0; i < CONFIG_ADC_STREAMING_BUFFERSIZE; i++) {
+        buffer[i] = invert * scale * ((adcbuffer[channelmap_ADCX_TO_ANX[channelmap_ANX_TO_ADCX[adc_channel]]][i]) - Offset);
+    }
+    return CONFIG_ADC_STREAMING_BUFFERSIZE;
+#else
+    return 0;
+#endif
+}
+
 void adc_set_stream_callback(void* stream_callback_function) {
 #ifdef CONFIG_ENABLE_ADC_STREAMING
     adcStreamCallbackFunction = stream_callback_function;
