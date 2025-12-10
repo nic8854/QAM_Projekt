@@ -3,6 +3,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void InitPacketEncoder();
+void PacketEncoder_init(void);
 
-bool PacketEncoder_receiveData();
+bool PacketEncoder_receiveData(uint32_t data);

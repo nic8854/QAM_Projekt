@@ -56,7 +56,7 @@ void app_main()
     DataProvider_init();
     InitGuiDriver();
     PacketDecoder_init();
-    InitPacketEncoder();
+    PacketEncoder_init();
     InitQamDemodulator();
     InitQamModulator();
     

@@ -1,132 +1,109 @@
 #include "PacketEncoder.h"
+#include "PacketDecoder.h"
+#include "QamModulator.h"
 
 #include "math.h"
 #include "eduboard2.h"
 
 #define TAG "PacketEncoder"
 
-// Eingangsqueue DataProvider
 #define PACKETENCODER_INPUT_QUEUE_LEN 16
 
 QueueHandle_t s_packetEncoderInputQueue = NULL;
 
-// -----------------------------------------------------------------------------
-// Checksumme: einfacher 8-Bit-Summen-Checksum über die ersten 7 Bytes
-// -----------------------------------------------------------------------------
-
-uint8_t PacketEncoder_calcChecksum8(const uint8_t *bytes, size_t len)
+// Checksumme über Header + Payload
+uint8_t PacketEncoder_calcChecksum( uint8_t syncByte,
+                                    uint8_t cmdByte,
+                                    uint8_t paramByte,
+                                    uint32_t payload)
 {
-    uint16_t sum = 0;
-    for (size_t i = 0; i < len; ++i)
-    {
-        sum += bytes[i];
-    }
-    return (uint8_t)(sum & 0xFFu);
+    uint8_t sum = 0;
+
+    sum += syncByte;
+    sum += cmdByte;
+    sum += paramByte;
+    sum += (uint8_t)((payload >> 24) & 0xFF);
+    sum += (uint8_t)((payload >> 16) & 0xFF);
+    sum += (uint8_t)((payload >> 8)  & 0xFF);
+    sum += (uint8_t)( payload        & 0xFF);
+
+    return sum;
 }
 
-// -----------------------------------------------------------------------------
-// Frameaufbau gemäss Protokoll (8 Bytes → 64 Bit)
-// -----------------------------------------------------------------------------
+// Frameaufbau:
+// byte1: SYNC
+// byte2: CMD
+// byte3: PARAM
+// byte4..7: DATA (uint32_t payload, MSB zuerst)
+// byte8: CHECKSUM
 
 uint64_t PacketEncoder_buildFrame(uint32_t payload)
 {
-    uint8_t syncByte   = 0xFF;
-    uint8_t commandByte = 0x0A; // "Temperatur" -> später mit enum erweitern
-    uint8_t paramByte   = 0x00;
+    uint8_t syncByte  = 0xFF;   // Sync
+    uint8_t cmdByte   = 0x10;   // Temperatur
+    uint8_t paramByte = 0x00;
+    uint8_t checksumByte = PacketEncoder_calcChecksum(syncByte, cmdByte, paramByte, payload);
 
-    // Payload als 4 Datenbytes (MSB zuerst)
-    uint8_t data1 = (uint8_t)((payload >> 24) & 0xFFu); // MSB
-    uint8_t data2 = (uint8_t)((payload >> 16) & 0xFFu);
-    uint8_t data3 = (uint8_t)((payload >> 8)  & 0xFFu);
-    uint8_t data4 = (uint8_t)(payload & 0xFFu);         // LSB
+    uint8_t b1 = syncByte;
+    uint8_t b2 = cmdByte;
+    uint8_t b3 = paramByte;
+    uint8_t b4 = (uint8_t)((payload >> 24) & 0xFF);
+    uint8_t b5 = (uint8_t)((payload >> 16) & 0xFF);
+    uint8_t b6 = (uint8_t)((payload >> 8)  & 0xFF);
+    uint8_t b7 = (uint8_t)( payload        & 0xFF);
+    uint8_t b8 = checksumByte;
 
-    uint8_t bytes[7] = {
-        syncByte,
-        commandByte,
-        paramByte,
-        data1,
-        data2,
-        data3,
-        data4
-    };
-
-    uint8_t checksumByte = PacketEncoder_calcChecksum8(bytes, 7);
-
-    // Bytes in 64-Bit-Frame packen (Byte 1 = MSB)
     uint64_t frame = 0;
-    frame |= ((uint64_t)syncByte    << 56);
-    frame |= ((uint64_t)commandByte << 48);
-    frame |= ((uint64_t)paramByte   << 40);
-    frame |= ((uint64_t)data1       << 32);
-    frame |= ((uint64_t)data2       << 24);
-    frame |= ((uint64_t)data3       << 16);
-    frame |= ((uint64_t)data4       << 8);
-    frame |= ((uint64_t)checksumByte);
+    frame |= ((uint64_t)b1 << 56);
+    frame |= ((uint64_t)b2 << 48);
+    frame |= ((uint64_t)b3 << 40);
+    frame |= ((uint64_t)b4 << 32);
+    frame |= ((uint64_t)b5 << 24);
+    frame |= ((uint64_t)b6 << 16);
+    frame |= ((uint64_t)b7 <<  8);
+    frame |= ((uint64_t)b8      );
 
     return frame;
 }
 
-// -----------------------------------------------------------------------------
-// Public API: Queue-Zugriff
-// -----------------------------------------------------------------------------
-
 bool PacketEncoder_receiveData(uint32_t data)
 {
-    if (s_packetEncoderInputQueue == NULL)
-    {
-        // InitPacketEncoder() noch nicht aufgerufen
-        return false;
-    }
+    if (s_packetEncoderInputQueue == NULL) return false;
 
-    // stark vereinfachtes Handling: non-blocking, Resultat direkt zurückgeben
-    return (xQueueSend(s_packetEncoderInputQueue, &data, 0) == pdPASS);
+    BaseType_t result = xQueueSend(s_packetEncoderInputQueue, &data, 0);
+    return (result);
 }
 
-// -----------------------------------------------------------------------------
-// Task
-// -----------------------------------------------------------------------------
 
-static void PacketEncoderTask(void *pvParameters)
+void PacketEncoder_task(void *pvParameters)
 {
     (void)pvParameters;
-
-    uint32_t rxWord;
+    uint32_t payload = 0;
 
     for (;;)
     {
-        // blockierend auf neue Daten warten
-        if (xQueueReceive(s_packetEncoderInputQueue,
-                          &rxWord,
-                          portMAX_DELAY) == pdPASS)
+        // warten auf Payload vom DataProvider
+        if (xQueueReceive(s_packetEncoderInputQueue, &payload, portMAX_DELAY))
         {
-            uint64_t frame = PacketEncoder_buildFrame(rxWord);
+            uint64_t frame = PacketEncoder_buildFrame(payload);
+            // Debug
+            //ESP_LOGW(TAG, "Transmitted Frame: 0x%016llX", (unsigned long long)frame);
 
-            // TODO: an QAMModulator weitergeben
-            // QAMModulator_receiveData(frame);
+            if(!PacketDecoder_receivePacket(frame))
+                ESP_LOGW(TAG, "PacketDecoder queue full, dropping frame");
 
-            ESP_LOGI(TAG,
-                     "Frame: 0x%016llX (from 0x%08X)",
-                     (unsigned long long)frame,
-                     (unsigned int)rxWord);
+            //if (!QamModulator_receivePacket(frame)) 
+            //    ESP_LOGW(TAG, "QamModulator queue full, dropping frame");
         }
     }
 }
 
-void InitPacketEncoder(void)
+void PacketEncoder_init(void)
 {
-    s_packetEncoderInputQueue = xQueueCreate(
-        PACKETENCODER_INPUT_QUEUE_LEN,
-        sizeof(uint32_t)
-    );
-
-    if (s_packetEncoderInputQueue == NULL)
-    {
-        ESP_LOGE(TAG, "Failed to create PacketEncoder input queue");
-        return;
-    }
+    s_packetEncoderInputQueue = xQueueCreate(PACKETENCODER_INPUT_QUEUE_LEN, sizeof(uint32_t));
 
     xTaskCreate(
-        PacketEncoderTask,  // Taskfunktion
+        PacketEncoder_task, // Taskfunktion
         "PacketEncoder",    // Name
         2 * 2048,           // Stack
         NULL,               // Parameter
