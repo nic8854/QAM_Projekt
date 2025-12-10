@@ -13,13 +13,13 @@
 #include "QamModulator.h"
 
 
-#define Ampl_factor 0.177f         // entspricht 1.5Vpp
+#define Ampl_factor 0.0885f         // entspricht 1.5Vpp
 
 // Samplerate 100 uS
-#define QAM_TABLE_SIZE  127       // 127 Samples pro Sinusperiode => 78.74 Hz
+#define QAM_TABLE_SIZE  128       // 127 Samples pro Sinusperiode => 78.74 Hz
 
 #define Anz_Bits        64       // Anzahl Bits
-#define Offset          211       // 211=> 1.65V
+#define Offset          104       // 104 => 1.65V
 
 static int8_t sinetable[QAM_TABLE_SIZE];
 static int8_t cosinetable[QAM_TABLE_SIZE];
@@ -46,8 +46,8 @@ void InitQamModulator(){
     }
 
     // 2️⃣ DAC konfigurieren
-    dac_set_config(DAC_A, DAC_GAIN_1, true);
-    dac_set_config(DAC_B, DAC_GAIN_1, true);
+    dac_set_config(DAC_A, DAC_GAIN_2, true);
+    dac_set_config(DAC_B, DAC_GAIN_2, true);
     dac_update();
 
     dac_set_stream_callback(&dacCallbackFunction); 

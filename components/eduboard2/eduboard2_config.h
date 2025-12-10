@@ -39,11 +39,11 @@
     #define CONFIG_ADC_STREAMING_BUFFERSIZE 256
     // #define ADC_STREAM_SAMPLERATE_US    50
     // #define ADC_STREAM_SAMPLERATE_US    60
-    // #define ADC_STREAM_SAMPLERATE_US    100
+     #define ADC_STREAM_SAMPLERATE_US    100
     // #define ADC_STREAM_SAMPLERATE_US    120
     // #define ADC_STREAM_SAMPLERATE_US    200
     // #define ADC_STREAM_SAMPLERATE_US    240
-     #define ADC_STREAM_SAMPLERATE_US    300
+    // #define ADC_STREAM_SAMPLERATE_US    300
     // #define ADC_STREAM_SAMPLERATE_US    1000
 #endif
 
@@ -53,14 +53,14 @@
 #ifdef CONFIG_ENABLE_DAC
     #define CONFIG_DAC_STREAMING
     #ifdef CONFIG_DAC_STREAMING
-        #define CONFIG_DAC_STREAMING_BUFFERSIZE 127
+        #define CONFIG_DAC_STREAMING_BUFFERSIZE 128
         // #define DAC_STREAM_SAMPLERATE    50
         // #define DAC_STREAM_SAMPLERATE    60
-        // #define DAC_STREAM_SAMPLERATE    100
+         #define DAC_STREAM_SAMPLERATE    100
         // #define DAC_STREAM_SAMPLERATE    120
         // #define DAC_STREAM_SAMPLERATE    200
         // #define DAC_STREAM_SAMPLERATE    240
-         #define DAC_STREAM_SAMPLERATE    300
+        // #define DAC_STREAM_SAMPLERATE    300
     #endif
 #endif
 

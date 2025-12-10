@@ -14,7 +14,7 @@ uint64_t QAM_get_Data();
 
 
 
-float average_filter(int32_t *buffer, int length);
+float average_filter(float *buffer, int length);
 int32_t array_max(int32_t *arr, int length);
 uint32_t array_zero_pos(int32_t *arr, int length);
 

@@ -11,10 +11,10 @@
 
 #define PI          3.14
 #define sqrt18      4.24264
-#define Ampl_max    1862    // 1.5V
-//#define Offset      1241    // => 1V
-//#define Offset      1200    // => 1V
-#define Offset      1900    // => 1.65V
+#define sqrt2      1.412135
+#define Ampl_max    1820    // 1.5V
+//#define Offset      1000    // => 1V
+#define Offset      1935    // => 1.65V
 #define Invert      1
 //#define Invert      -1
 
@@ -39,10 +39,10 @@ State mode = Idle;
 
 bool QAM_receive = false;
 
-static int16_t sinetable[Sin_Cosin_Buffer_Size];
-static int16_t cosinetable[Sin_Cosin_Buffer_Size];
+static float sinetable[Sin_Cosin_Buffer_Size];
+static float cosinetable[Sin_Cosin_Buffer_Size];
 
-static int16_t sync_Amplitude = 1862;      // 1.5Vpp muss immer auf die Amplitude des entferntesten Musters aufgerechnet werden
+static int16_t sync_Amplitude = 1828;      // 1.5Vpp muss immer auf die Amplitude des entferntesten Musters aufgerechnet werden
 static uint8_t max_steilheit =  100;//(((Ampl_max/1862)/*sync_Amplitude*/) * 60) + 20;
 static uint8_t zero_pos;
 static uint8_t readb_buff_pos;
@@ -63,14 +63,15 @@ void adc_callback_function(){
     adc_get_QAM_buffer(Invert,scale,Offset,Input_Pin, adcQAMBuffer);
     
     if (!Start){
+        //array_max(adcQAMBuffer[],ADC_BUFFER_SIZE);    //sync Amplitude
         for (int i = 0; i < ADC_BUFFER_SIZE-1; i++)
         {
             if (abs(adcQAMBuffer[i+1] - adcQAMBuffer[i]) > max_steilheit)
             {
                 buffer_cnt = 0;
                 Buffer_compl = false;
-                zero_pos = i;
-                readb_buff_pos = i;
+                zero_pos = i+1;
+                readb_buff_pos = zero_pos;
                 Start = true;
                 led_toggle(LED7);
                 break;
@@ -84,6 +85,8 @@ void adc_callback_function(){
         {
             for (int i = zero_pos; i < ADC_BUFFER_SIZE; i++)
             {
+                if ((i-readb_buff_pos + buffer_cnt*ADC_BUFFER_SIZE) >= ADC_Read_BUFFER_SIZE)
+                    break;
                 adcReadBuffer[i-readb_buff_pos + (buffer_cnt*ADC_BUFFER_SIZE)] = adcQAMBuffer[i];
             }
             zero_pos = 0;
@@ -107,11 +110,11 @@ void adc_callback_function(){
 void InitQamDemodulator(){
     // Sinus und Cosiunustabelle erzeugen
     for (int i = 0; i < Sin_Cosin_Buffer_Size; i++) {
-        float val = sinf(2.0f * M_PI * i / (Sin_Cosin_Buffer_Size));    // -1..1
-        sinetable[i] = (int16_t)(val * Ampl_max/sqrt18);                       
+        float val = sinf(2.0f * M_PI * i / ((Sin_Cosin_Buffer_Size/2)));    // -1..1
+        sinetable[i] = (float)(val);                       
 
-        val = cosf(2.0f * M_PI * i / Sin_Cosin_Buffer_Size);            // -1..1
-        cosinetable[i] = (int16_t)(val * Ampl_max/sqrt18);                     
+        val = cosf(2.0f * M_PI * i / (Sin_Cosin_Buffer_Size/2));            // -1..1
+        cosinetable[i] = (float)(val);                     
     }
 
     // ADC init
@@ -128,7 +131,7 @@ void InitQamDemodulator(){
 }
 
 
-float average_filter(int32_t *buffer, int length) {
+float average_filter(float *buffer, int length) {
     float sum = 0.0f;
 
     for (int i = 0; i < length; i++) {
@@ -162,16 +165,59 @@ uint32_t array_zero_pos(int32_t *arr, int length) {
     return zero_pos;
 }
 
+uint64_t map_QAM_Buffer(int16_t *adcBuf)
+{
+    float norm_factor = (float)18/sync_Amplitude; // (3/(sync_Amplitude / (sqrt18*sqrt2)));
+    float sym_arr[256];
+    uint8_t symbol;
+    uint64_t Data = 0;
+    for (int s = 0; s < 16; s++) {
+        
+        float I = 0.0f;
+        float Q = 0.0f;
+
+        for (int n = 0; n < 256; n++) {
+           sym_arr[n] = adcBuf[n+(s*256)] * sinetable[n] * norm_factor;
+        }
+        Q = average_filter(sym_arr,256);   //integral über 2 Wellen
+        
+        for (int n = 0; n < 256; n++) {
+           sym_arr[n] = adcBuf[n+(s*256)] * cosinetable[n] * norm_factor;
+        }
+        I = average_filter(sym_arr,256);   //integral über 2 Wellen
+        
+        //for (int n = 0; n < 256; n++)
+            //printf("%f\n", sym_arr[n]);
+        //printf("%f\n", I);
+        //printf("%f\n", Q);
+        // Decision Mapping
+        int I_idx = (I < -2) ? 0 :
+                    (I <  0) ? 1 :
+                    (I <  2) ? 3 : 2;
+
+        int Q_idx = (Q < -2) ? 0 :
+                    (Q <  0) ? 1 :
+                    (Q <  2) ? 3 : 2;
+
+        // 4-bit Symbol
+        symbol = (I_idx << 2) | (Q_idx);
+        Data |= ((uint64_t)symbol << (4 * (15 - s)));
+    }
+    return Data;
+}
+
 void QamDemodulator(){
     while(1){
     vTaskDelay(200);
     if (Buffer_compl)
-    {
+    {   
         for (size_t i = 0; i < ADC_Read_BUFFER_SIZE; i++)
         {
-            printf("%d\n", adcReadBuffer[i]);
+            //printf("%d\n", adcReadBuffer[i]);
         }
+        Data = map_QAM_Buffer(adcReadBuffer);
     Buffer_compl = false;
+    printf("QAM Packet = 0x%016llX\n", (unsigned long long)Data);
     }
 }
 }
