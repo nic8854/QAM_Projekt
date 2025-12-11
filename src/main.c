@@ -83,6 +83,11 @@ void app_main()
     InitGuiDriver();
     InitPacketDecoder();
     InitPacketEncoder();
+    DataProvider_init();
+    InitGuiDriver();
+    PacketDecoder_init();
+    PacketEncoder_init();
+    InitQamDemodulator();
     InitQamModulator();
     InitQamDemodulator();
     

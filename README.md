@@ -13,8 +13,8 @@ PacketDecoder -->|uint32_t binary queue| GuiDriver;
 ```
 
 # Protocol specification
-| byte # | content   | description |
-|--------|-----------|-------------|
+| byte # | content   | description                                                                |
+|--------|-----------|----------------------------------------------------------------------------|
 | 1      | SYNC      | pulse to synchronize the pulse as well as the amplitude of the signal      |
 | 2      | CMD       | describes the type of data being transmitted                               |
 | 3      | PARAM     | can be used differntly depending on CMD, but is mainly used as an iterator |
@@ -23,6 +23,17 @@ PacketDecoder -->|uint32_t binary queue| GuiDriver;
 | 6      | DATA 3    | data byte 3                                                                |
 | 7      | DATA 4    | data byte 4 (LSB)                                                          |
 | 8      | CHECKSUM  | calculated checksum to confirm package validity                            |
+
+## CMD Byte Description
+The first hex digit of the CMD byte represents the general command type and the second digit reprents it's revision or variant.
+| hex value | Packet Type   | description                                                                         |
+|-----------|---------------|-------------------------------------------------------------------------------------|
+| 0x0X      | Internal      | This type is for internal signaling between transmitter and receiver                |
+| 0x1X      | Temperature   | This type is for sending temperature data                                           |
+| 0x10      | Temperature   | This command sends temperature data in the form of a float cast into a uint32_t     |
+| 0x2x      | Text          | This type is for sending text data                                                  |
+| 0x20      | Text          | This command sends text in the form of 4 ascii encoded characters(char) per command |
+| 0x3X      | Input         | This type is for sending input data                                                 |
 
 # Module Documentation
 ## DataProvider
@@ -79,6 +90,7 @@ It provides the decoded data for the GUI.
 ### API
 <b>void PacketDecoder_init();</b><br>
 This function initializes the module
+
 <b>bool PacketDecoder_receivePacket(uint64_t packet);</b><br>
 This function is responsible for feeding the internal package queue in which the packages to be translated are stored.
 
@@ -87,7 +99,8 @@ This function is responsible for feeding the internal package queue in which the
 This module displays the received value as well as displaying different statistics on how the system is performing.
 ### API
 #### Init Function
-<b>void InitDataProvider();</b><br>
+<b>void GuiDriver_init();</b><br>
 This function initializes the module
+
 <b>bool GuiDriver_receiveData(uint32_t data);</b><br>
 This function is responsible for feeding the internal package queue in which the data to be displayed on screen is stored.
