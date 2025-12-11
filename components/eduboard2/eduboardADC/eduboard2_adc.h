@@ -19,5 +19,7 @@
 uint32_t adc_get_raw(uint8_t adc_channel);
 uint32_t adc_get_voltage_mv(uint8_t adc_channel);
 uint32_t adc_get_buffer(uint8_t adc_channel, uint16_t* buffer);
+uint32_t adc_get_QAM_buffer(int8_t invert, float scale, uint16_t Offset,uint8_t adc_channel, int16_t* buffer);
+
 void adc_set_stream_callback(void* stream_callback_function);
 void eduboard_init_adc();
