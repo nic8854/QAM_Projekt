@@ -11,8 +11,10 @@
 
 #define PI          3.14
 #define sqrt18      4.24264
-#define sqrt2      1.412135
-#define Ampl_max    1820    // 1.5V
+#define sqrt2       1.412135
+#define Ampl_Start  1820    // 1.5V
+#define Ampl_max    2500    
+#define Ampl_min    2100   
 //#define Offset      1000    // => 1V
 #define Offset      1935    // => 1.65V
 #define Invert      1
@@ -63,11 +65,21 @@ void adc_callback_function(){
     adc_get_QAM_buffer(Invert,scale,Offset,Input_Pin, adcQAMBuffer);
     
     if (!Start){
-        //array_max(adcQAMBuffer[],ADC_BUFFER_SIZE);    //sync Amplitude
+
+        //sync Amplitude
+        int16_t Ampl_meas = (float) 2*sqrt18*(array_max(adcQAMBuffer,ADC_BUFFER_SIZE));    //sync Amplitude
+        sync_Ampl (Ampl_meas);
+
         for (int i = 0; i < ADC_BUFFER_SIZE-1; i++)
         {
+            max_steilheit = (float)((sync_Amplitude * PI) / (Sin_Cosin_Buffer_Size/2) + 20);
+
             if (abs(adcQAMBuffer[i+1] - adcQAMBuffer[i]) > max_steilheit)
             {
+                //sync Amplitude
+                int16_t Ampl_meas = (float) 2*(array_max(adcQAMBuffer,ADC_BUFFER_SIZE));    //sync Amplitude
+                sync_Ampl (Ampl_meas);
+                
                 buffer_cnt = 0;
                 Buffer_compl = false;
                 zero_pos = i+1;
@@ -108,6 +120,8 @@ void adc_callback_function(){
 // }
 
 void InitQamDemodulator(){
+
+    sync_Amplitude = Ampl_Start;
     // Sinus und Cosiunustabelle erzeugen
     for (int i = 0; i < Sin_Cosin_Buffer_Size; i++) {
         float val = sinf(2.0f * M_PI * i / ((Sin_Cosin_Buffer_Size/2)));    // -1..1
@@ -141,7 +155,7 @@ float average_filter(float *buffer, int length) {
     return sum / length;
 }
 
-int32_t array_max(int32_t *arr, int length) {
+int16_t array_max(int16_t *arr, int length) {
     int16_t max = arr[0];
 
     for (int i = 1; i < length; i++) {
@@ -164,6 +178,15 @@ uint32_t array_zero_pos(int32_t *arr, int length) {
     }
     return zero_pos;
 }
+
+void sync_Ampl(int16_t Ampl_meas)
+{
+    if (Ampl_meas > sync_Amplitude && sync_Amplitude < Ampl_max)
+        sync_Amplitude += 5;
+    if (Ampl_meas < sync_Amplitude && sync_Amplitude > Ampl_min)
+        sync_Amplitude -= 5;
+}
+
 
 uint64_t map_QAM_Buffer(int16_t *adcBuf)
 {
