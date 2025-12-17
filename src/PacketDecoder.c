@@ -69,5 +69,5 @@ uint8_t PacketDecoder_getParam__(uint64_t packet) {
 }
 
 uint32_t PacketDecoder_getData__(uint64_t packet) {
-    return (uint32_t)(packet & 0x00000000FFFFFFFF);
+    return (uint32_t)((packet & 0x000000FFFFFFFF00) >> 8);
 }
