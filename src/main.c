@@ -82,7 +82,7 @@ void app_main()
     //InitDataProvider();
     InitGuiDriver();
     PacketDecoder_init();
-    InitPacketEncoder();
+    PacketEncoder_init();
     DataProvider_init();
     InitGuiDriver();
     PacketDecoder_init();
