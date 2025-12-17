@@ -81,8 +81,8 @@ void app_main()
     InitDacDataRelay();
     //InitDataProvider();
     InitGuiDriver();
-    InitPacketDecoder();
-    InitPacketEncoder();
+    PacketDecoder_init();
+    PacketEncoder_init();
     DataProvider_init();
     InitGuiDriver();
     PacketDecoder_init();
