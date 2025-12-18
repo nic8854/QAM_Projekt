@@ -102,5 +102,8 @@ This module displays the received value as well as displaying different statisti
 <b>void GuiDriver_init();</b><br>
 This function initializes the module
 
-<b>bool GuiDriver_receiveData(uint32_t data);</b><br>
-This function is responsible for feeding the internal package queue in which the data to be displayed on screen is stored.
+<b>bool GuiDriver_receiveTemperature(float temperature);</b><br>
+This function is responsible for feeding the internal temperature queue with float values.
+
+<b>bool GuiDriver_receiveText(char text[4]);</b><br>
+This function is responsible for feeding the internal text queue. Each queue element conatins 4 text characters.
