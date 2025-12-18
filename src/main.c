@@ -12,6 +12,23 @@
 //    
 //    
 /********************************************************************************************* */
+
+// ------------------------------ PROGRAM CONFIG ------------------------------ //
+// Mode select
+#define QAM_MODE_TX         1   // Transmitter
+#define QAM_MODE_RX         2   // Receiver
+#define QAM_MODE_TRX        3   // Transceiver
+
+#define QAM_MODE        QAM_MODE_TRX   // <-- choose mode here
+
+// Only in TRX
+#define TRX_ROUTE_PACKET    1   // Route = PacketEncoder -> PacketDecoder
+#define TRX_ROUTE_MODEM     2   // Route = QamModulator -> QamDemodulator
+#define TRX_ROUTE_FULL      3   // Full route with DAC -> ADC
+
+#define QAM_TRX_ROUTE   TRX_ROUTE_Full  // <-- choose TRX route here
+// ---------------------------------------------------------------------------- //
+
 #include "eduboard2.h"
 #include "esp_log.h"
 #include "memon.h"
@@ -79,19 +96,13 @@ void app_main()
     //Initialize QAM components
     InitAdcDataRelay();
     InitDacDataRelay();
-    //InitDataProvider();
-    InitGuiDriver();
-    PacketDecoder_init();
-    PacketEncoder_init();
     DataProvider_init();
     InitGuiDriver();
     PacketDecoder_init();
     PacketEncoder_init();
-    InitQamDemodulator();
     InitQamModulator();
     InitQamDemodulator();
     
-    //Create templateTask
     xTaskCreate(templateTask,   //Subroutine
                 "testTask",     //Name
                 2*2048,         //Stacksize
@@ -100,7 +111,7 @@ void app_main()
                 NULL);          //Taskhandle
 
 
-    // // //Create templateTask
+    // Create templateTask
     // xTaskCreate(QAM_receive_Data,   //Subroutine
     //             "QAM_receive", //Name
     //             2*2048,         //Stacksize
