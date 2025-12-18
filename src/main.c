@@ -16,16 +16,17 @@
 // ------------------------------ PROGRAM CONFIG ------------------------------ //
 
 // Mode select
-//#define QAM_TX_MODE           // Transmitter
-//#define QAM_RX_MODE           // Receiver
-#define QAM_TRX_MODE          // Transceiver
+
+//#define QAM_TX_MODE             // Transmitter
+//#define QAM_RX_MODE             // Receiver
+#define QAM_TRX_MODE            // Transceiver
 
 // Route select
 #if defined(QAM_TRX_MODE)
 
-  //#define TRX_ROUTE_PACKET        // PacketEncoder -> PacketDecoder (without Modem)
-  //#define TRX_ROUTE_MODEM         // Modulator -> Demodulator (digital loopback)
-  #define TRX_ROUTE_FULL          // Modulator -> DAC -> ADC -> Demodulator (full)
+  //#define TRX_ROUTE_PACKET      // PacketEncoder -> PacketDecoder (without Modem)
+  //#define TRX_ROUTE_MODEM       // Modulator -> Demodulator (digital loopback)
+  #define TRX_ROUTE_FULL        // Modulator -> DAC -> ADC -> Demodulator (full)
 
 #endif
 // ---------------------------------------------------------------------------- //
@@ -39,6 +40,7 @@
 #include "math.h"
 #include <stdio.h>
 
+// Header files
 #include "AdcDataRelay.h"
 #include "DacDataRelay.h"
 #include "DataProvider.h"
@@ -65,7 +67,7 @@ void app_init(void)
     InitAdcDataRelay();
     InitQamDemodulator();
     PacketDecoder_init();
-    InitGuiDriver(); // RX mode only!
+    InitGuiDriver();
 
 #elif defined(QAM_TRX_MODE)
 
@@ -143,6 +145,7 @@ void app_main()
 {
     //Initialize Eduboard2 BSP
     eduboard2_init();
+    app_init();
 
     // Log Zeug deaktivieren
     esp_log_level_set("*", ESP_LOG_INFO);
