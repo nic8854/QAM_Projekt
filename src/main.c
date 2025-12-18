@@ -14,20 +14,23 @@
 /********************************************************************************************* */
 
 // ------------------------------ PROGRAM CONFIG ------------------------------ //
+
 // Mode select
-#define QAM_MODE_TX         1   // Transmitter
-#define QAM_MODE_RX         2   // Receiver
-#define QAM_MODE_TRX        3   // Transceiver
+//#define QAM_TX_MODE           // Transmitter
+//#define QAM_RX_MODE           // Receiver
+#define QAM_TRX_MODE          // Transceiver
 
-#define QAM_MODE        QAM_MODE_TRX   // <-- choose mode here
+// Route select
+#if defined(QAM_TRX_MODE)
 
-// Only in TRX
-#define TRX_ROUTE_PACKET    1   // Route = PacketEncoder -> PacketDecoder
-#define TRX_ROUTE_MODEM     2   // Route = QamModulator -> QamDemodulator
-#define TRX_ROUTE_FULL      3   // Full route with DAC -> ADC
+  //#define TRX_ROUTE_PACKET        // PacketEncoder -> PacketDecoder (without Modem)
+  //#define TRX_ROUTE_MODEM         // Modulator -> Demodulator (digital loopback)
+  #define TRX_ROUTE_FULL          // Modulator -> DAC -> ADC -> Demodulator (full)
 
-#define QAM_TRX_ROUTE   TRX_ROUTE_Full  // <-- choose TRX route here
+#endif
 // ---------------------------------------------------------------------------- //
+
+// --------------------------------- INCLUDES --------------------------------- //
 
 #include "eduboard2.h"
 #include "esp_log.h"
@@ -44,6 +47,57 @@
 #include "PacketEncoder.h"
 #include "QamDemodulator.h"
 #include "QamModulator.h"
+
+// ---------------------------------------------------------------------------- //
+
+// ------------------------------ INIT / START -------------------------------- //
+void app_init(void)
+{
+#if defined(QAM_TX_MODE)
+
+    DataProvider_init();
+    PacketEncoder_init();
+    InitQamModulator();
+    InitDacDataRelay();
+
+#elif defined(QAM_RX_MODE)
+
+    InitAdcDataRelay();
+    InitQamDemodulator();
+    PacketDecoder_init();
+    InitGuiDriver(); // RX mode only!
+
+#elif defined(QAM_TRX_MODE)
+
+  #if defined(TRX_ROUTE_PACKET)
+
+    DataProvider_init();
+    PacketEncoder_init();
+    PacketDecoder_init();
+
+  #elif defined(TRX_ROUTE_MODEM)
+
+    DataProvider_init();
+    PacketEncoder_init();
+    InitQamModulator();
+    InitQamDemodulator();
+    PacketDecoder_init();
+
+  #elif defined(TRX_ROUTE_FULL)
+
+    DataProvider_init();
+    PacketEncoder_init();
+    InitQamModulator();
+    InitDacDataRelay();
+    InitAdcDataRelay();
+    InitQamDemodulator();
+    PacketDecoder_init();
+
+  #endif
+
+#endif
+}
+// ---------------------------------------------------------------------------- //
 
 #define TAG "QAM"
 
@@ -93,15 +147,6 @@ void app_main()
     // Log Zeug deaktivieren
     esp_log_level_set("*", ESP_LOG_INFO);
 
-    //Initialize QAM components
-    InitAdcDataRelay();
-    InitDacDataRelay();
-    DataProvider_init();
-    InitGuiDriver();
-    PacketDecoder_init();
-    PacketEncoder_init();
-    InitQamModulator();
-    InitQamDemodulator();
     
     xTaskCreate(templateTask,   //Subroutine
                 "testTask",     //Name
