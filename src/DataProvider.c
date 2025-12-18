@@ -13,7 +13,7 @@
 // DataProvider task
 // -----------------------------------------------------------------------------
 
-static void DataProviderTask(void *pvParameters)
+void DataProvider_task(void *pvParameters)
 {
     (void)pvParameters;
 
@@ -26,7 +26,9 @@ static void DataProviderTask(void *pvParameters)
         float temperature = tmp112_get_value();
 
         // 32-Bit Payload
-        uint32_t payload = (int16_t)roundf(temperature * 100.0f);
+        uint32_t payload;
+
+        memcpy(&payload, &temperature, sizeof(float));
 
         // in PacketEncoder schieben
         if (!PacketEncoder_receiveData(payload))
@@ -39,19 +41,16 @@ static void DataProviderTask(void *pvParameters)
         sampleCounter++;
 
         // Debug
-        ESP_LOGI(TAG,
-                 "Temp=%.2f°C -> payload=0x%08X",
-                 temperature,
-                 (unsigned int)payload);
+        //ESP_LOGI(TAG, "Temp=%.4f°C -> payload=0x%08X", temperature, payload);
 
         // auf nächste Periode warten
         vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(DATAPROVIDER_PERIOD_MS));
     }
 }
 
-void InitDataProvider(void)
+void DataProvider_init(void)
 {
-    xTaskCreate(DataProviderTask,   //Subroutine
+    xTaskCreate(DataProvider_task,  //Subroutine
         "DataProvider",             //Name
         2*2048,                     //Stacksize
         NULL,                       //Parameters
