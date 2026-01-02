@@ -39,6 +39,15 @@ static void PacketDecoder_task(void *pvParameters) {
                     float temperature;
                     memcpy(&temperature, &data, sizeof(float));
                     ESP_LOGI(TAG, "Temperature command received: %.2fC", temperature);
+                    // GuiDriver_receiveTemperature(temperature);
+                    break;
+                }
+                case 0x20: {
+                    uint32_t data = PacketDecoder_getData__(packet);
+                    char text[4];
+                    memcpy(&text, &data, sizeof(char[4]));
+                    ESP_LOGI(TAG, "Text command received: %c%c%c%c", text[0], text[1], text[2], text[3]);
+                    // GuiDriver_receiveText(text);
                     break;
                 }
                 default:
