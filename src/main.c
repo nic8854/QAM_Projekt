@@ -53,7 +53,7 @@ void app_init(void)
     InitAdcDataRelay();
     InitQamDemodulator();
     PacketDecoder_init();
-    InitGuiDriver();
+    GuiDriver_init();
 
 #elif defined(QAM_TRX_MODE)
 
@@ -62,6 +62,7 @@ void app_init(void)
     DataProvider_init();
     PacketEncoder_init();
     PacketDecoder_init();
+    GuiDriver_init();
 
   #elif defined(TRX_ROUTE_MODEM)
 
