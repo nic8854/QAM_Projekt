@@ -19,7 +19,8 @@
 #define QAM_TABLE_SIZE  128       // 127 Samples pro Sinusperiode => 78.74 Hz
 
 #define Anz_Bits        64       // Anzahl Bits
-#define Offset          104       // 104 => 1.65V
+// #define Offset          104       // 104 => 1.65V
+#define Offset          88    // => 1.4V
 
 static int8_t sinetable[QAM_TABLE_SIZE];
 static int8_t cosinetable[QAM_TABLE_SIZE];
