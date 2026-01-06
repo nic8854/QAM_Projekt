@@ -14,6 +14,10 @@ static TaskHandle_t PacketDecoder_taskHandle = NULL;
 uint8_t PacketDecoder_getCmd__(uint64_t packet);
 uint8_t PacketDecoder_getParam__(uint64_t packet);
 uint32_t PacketDecoder_getData__(uint64_t packet);
+uint8_t PacketDecoder_getSyncByte__(uint64_t packet);
+uint8_t PacketDecoder_getChecksumByte__(uint64_t packet);
+uint8_t PacketDecoder_calcChecksum__(uint64_t packet);
+bool PacketDecoder_verifyChecksum__(uint64_t packet);
 
 static void PacketDecoder_task(void *pvParameters) {
     uint64_t packet;
@@ -21,12 +25,29 @@ static void PacketDecoder_task(void *pvParameters) {
     while (1) {
         if (xQueueReceive(packetQueue, &packet, portMAX_DELAY) == pdTRUE) {
             ESP_LOGI(TAG, "Received packet: 0x%llX", packet);
+            
+            // Verify checksum
+            if (!PacketDecoder_verifyChecksum__(packet)) {
+                ESP_LOGE(TAG, "Checksum verification failed! Expected: 0x%02X, Got: 0x%02X", 
+                         PacketDecoder_calcChecksum__(packet), PacketDecoder_getChecksumByte__(packet));
+                continue;
+            }
+            
             switch(PacketDecoder_getCmd__(packet)) {
                 case 0x10: {
                     uint32_t data = PacketDecoder_getData__(packet);
                     float temperature;
                     memcpy(&temperature, &data, sizeof(float));
                     ESP_LOGI(TAG, "Temperature command received: %.2fC", temperature);
+                    // GuiDriver_receiveTemperature(temperature);
+                    break;
+                }
+                case 0x20: {
+                    uint32_t data = PacketDecoder_getData__(packet);
+                    char text[4];
+                    memcpy(&text, &data, sizeof(char[4]));
+                    ESP_LOGI(TAG, "Text command received: %c%c%c%c", text[0], text[1], text[2], text[3]);
+                    // GuiDriver_receiveText(text);
                     break;
                 }
                 default:
@@ -69,5 +90,37 @@ uint8_t PacketDecoder_getParam__(uint64_t packet) {
 }
 
 uint32_t PacketDecoder_getData__(uint64_t packet) {
-    return (uint32_t)(packet & 0x00000000FFFFFFFF);
+    return (uint32_t)((packet & 0x000000FFFFFFFF00) >> 8);
+}
+
+uint8_t PacketDecoder_getSyncByte__(uint64_t packet) {
+    return (uint8_t)((packet & 0xFF00000000000000) >> 56);
+}
+
+uint8_t PacketDecoder_getChecksumByte__(uint64_t packet) {
+    return (uint8_t)(packet & 0x00000000000000FF);
+}
+
+uint8_t PacketDecoder_calcChecksum__(uint64_t packet) {
+    uint8_t sum = 0;
+    uint8_t syncByte = PacketDecoder_getSyncByte__(packet);
+    uint8_t cmdByte = PacketDecoder_getCmd__(packet);
+    uint8_t paramByte = PacketDecoder_getParam__(packet);
+    uint32_t payload = PacketDecoder_getData__(packet);
+    
+    sum += syncByte;
+    sum += cmdByte;
+    sum += paramByte;
+    sum += (uint8_t)((payload >> 24) & 0xFF);
+    sum += (uint8_t)((payload >> 16) & 0xFF);
+    sum += (uint8_t)((payload >> 8)  & 0xFF);
+    sum += (uint8_t)( payload        & 0xFF);
+    
+    return sum;
+}
+
+bool PacketDecoder_verifyChecksum__(uint64_t packet) {
+    uint8_t calculatedChecksum = PacketDecoder_calcChecksum__(packet);
+    uint8_t receivedChecksum = PacketDecoder_getChecksumByte__(packet);
+    return (calculatedChecksum == receivedChecksum);
 }
