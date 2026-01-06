@@ -2,6 +2,24 @@
 #define EDUBOARD_CPU_BOARD_ESP32_S3
 //#define EDUBOARD_CPU_BOARD_ATMEGA328PB
 
+// ------------------------------ PROGRAM CONFIG ------------------------------ //
+
+// Mode select
+
+#define QAM_TX_MODE             // Transmitter
+//#define QAM_RX_MODE             // Receiver
+//#define QAM_TRX_MODE            // Transceiver
+
+// Route select
+#if defined(QAM_TRX_MODE)
+
+  #define TRX_ROUTE_PACKET      // PacketEncoder -> PacketDecoder (without Modem)
+  //#define TRX_ROUTE_MODEM       // Modulator -> Demodulator (digital loopback)
+  //#define TRX_ROUTE_FULL        // Modulator -> DAC -> ADC -> Demodulator (full)
+
+#endif
+// ---------------------------------------------------------------------------- //
+
 /*LED Config*/
 #define CONFIG_ENABLE_LED0
 #define CONFIG_ENABLE_LED1
@@ -49,10 +67,7 @@
 
 
 /*DAC Output Config*/
-#if defined(QAM_TX_MODE)
-    #define CONFIG_ENABLE_DAC
-#endif
-#if defined(QAM_TRX_MODE)
+#if defined(QAM_TX_MODE) || (defined(QAM_TRX_MODE) && !defined(TRX_ROUTE_PACKET))
     #define CONFIG_ENABLE_DAC
 #endif
 
@@ -60,7 +75,7 @@
     #define CONFIG_DAC_STREAMING
     #ifdef CONFIG_DAC_STREAMING
         #define CONFIG_DAC_STREAMING_BUFFERSIZE 128
-         #define DAC_STREAM_SAMPLERATE    50
+        #define DAC_STREAM_SAMPLERATE    50
         // #define DAC_STREAM_SAMPLERATE    60
         // #define DAC_STREAM_SAMPLERATE    100
         // #define DAC_STREAM_SAMPLERATE    120
@@ -72,7 +87,7 @@
 
 
 /*LCD Config*/
-#if defined(QAM_RX_MODE)
+#if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
     #define CONFIG_ENABLE_LCD
 #endif
 
