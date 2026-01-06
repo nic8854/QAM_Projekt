@@ -5,4 +5,6 @@
 
 void PacketEncoder_init(void);
 
-bool PacketEncoder_receiveData(uint32_t data);
+bool PacketEncoder_receiveTemperature(uint32_t data);
+
+bool PacketEncoder_receiveTextByte(uint8_t byte);
