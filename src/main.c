@@ -13,26 +13,9 @@
 //    
 /********************************************************************************************* */
 
-// ------------------------------ PROGRAM CONFIG ------------------------------ //
-
-// Mode select
-
-//#define QAM_TX_MODE             // Transmitter
-//#define QAM_RX_MODE             // Receiver
-#define QAM_TRX_MODE            // Transceiver
-
-// Route select
-#if defined(QAM_TRX_MODE)
-
-  //#define TRX_ROUTE_PACKET      // PacketEncoder -> PacketDecoder (without Modem)
-  //#define TRX_ROUTE_MODEM       // Modulator -> Demodulator (digital loopback)
-  #define TRX_ROUTE_FULL        // Modulator -> DAC -> ADC -> Demodulator (full)
-
-#endif
-// ---------------------------------------------------------------------------- //
-
 // --------------------------------- INCLUDES --------------------------------- //
 
+#include "ProjectConfig.h"
 #include "eduboard2.h"
 #include "esp_log.h"
 #include "memon.h"
@@ -109,21 +92,6 @@ void app_init(void)
 
 #define UPDATETIME_MS 100
 
-void templateTask(void* param) {
-    //Init stuff here
-    vTaskDelay(10);
-    for(;;) {
-        vTaskDelay(10);
-        // task main loop
-        if(button_get_state(SW0, true) == SHORT_PRESSED) {
-            Qam_Burst(0x0F0F0F0F0F0F0F0F);
-        }
-        //led_toggle(LED7);
-        // delay
-        vTaskDelay(UPDATETIME_MS/portTICK_PERIOD_MS);
-    }
-}
-
 
 void QAM_receive_Data(void* param) {
     //Init stuff here
@@ -143,8 +111,6 @@ void QAM_receive_Data(void* param) {
 }
 
 
-
-
 void app_main()
 {
     //Initialize Eduboard2 BSP
@@ -153,14 +119,6 @@ void app_main()
 
     // Log Zeug deaktivieren
     esp_log_level_set("*", ESP_LOG_INFO);
-
-    
-    xTaskCreate(templateTask,   //Subroutine
-                "testTask",     //Name
-                2*2048,         //Stacksize
-                NULL,           //Parameters
-                10,             //Priority
-                NULL);          //Taskhandle
 
 
     // Create templateTask

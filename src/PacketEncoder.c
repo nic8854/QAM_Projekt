@@ -1,18 +1,33 @@
+#include "ProjectConfig.h"
 #include "PacketEncoder.h"
 #include "PacketDecoder.h"
 #include "QamModulator.h"
 
-#include "math.h"
-#include "eduboard2.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+
+#include "esp_log.h"
 
 #define TAG "PacketEncoder"
 
-#define PACKETENCODER_INPUT_QUEUE_LEN 16
+// Queue-Längen
+#define PACKETENCODER_TEMP_QUEUE_LEN  16
+#define PACKETENCODER_TEXT_QUEUE_LEN  64   // Text-Bytes, inkl. '\0'
 
-QueueHandle_t s_packetEncoderInputQueue = NULL;
+// Commands
+#define CMD_Temp  0x10
+#define CMD_Text  0x20
 
-// Checksumme über Header + Payload
-uint8_t PacketEncoder_calcChecksum( uint8_t syncByte,
+// Queues + QueueSet
+QueueHandle_t s_packetEncoderTempQueue = NULL;
+QueueHandle_t s_packetEncoderTextQueue = NULL;
+QueueSetHandle_t s_packetEncoderQueueSet = NULL;
+
+// ------------------------- Checksum & Frame ------------------------- //
+
+// Checksumme über Header + Payload (8-bit Summe)
+uint8_t PacketEncoder_calcChecksum(uint8_t syncByte,
                                     uint8_t cmdByte,
                                     uint8_t paramByte,
                                     uint32_t payload)
@@ -36,12 +51,12 @@ uint8_t PacketEncoder_calcChecksum( uint8_t syncByte,
 // byte3: PARAM
 // byte4..7: DATA (uint32_t payload, MSB zuerst)
 // byte8: CHECKSUM
-
-uint64_t PacketEncoder_buildFrame(uint32_t payload)
+uint64_t PacketEncoder_buildFrame(uint32_t payload, uint8_t cmd, uint8_t param)
 {
-    uint8_t syncByte  = 0xFF;   // Sync
-    uint8_t cmdByte   = 0x10;   // Temperatur
-    uint8_t paramByte = 0x00;
+    uint8_t syncByte  = 0xFF;
+    uint8_t cmdByte   = cmd;
+    uint8_t paramByte = param;
+
     uint8_t checksumByte = PacketEncoder_calcChecksum(syncByte, cmdByte, paramByte, payload);
 
     uint8_t b1 = syncByte;
@@ -61,53 +76,114 @@ uint64_t PacketEncoder_buildFrame(uint32_t payload)
     frame |= ((uint64_t)b5 << 24);
     frame |= ((uint64_t)b6 << 16);
     frame |= ((uint64_t)b7 <<  8);
-    frame |= ((uint64_t)b8      );
+    frame |= ((uint64_t)b8);
 
     return frame;
 }
 
-bool PacketEncoder_receiveData(uint32_t data)
+void PacketEncoder_forwardFrame(uint64_t frame)
 {
-    if (s_packetEncoderInputQueue == NULL) return false;
+    #if defined(TRX_ROUTE_PACKET)
+        if (!PacketDecoder_receivePacket(frame))
+            ESP_LOGW(TAG, "PacketDecoder queue full, dropping frame");
+    
+    #elif defined(TRX_ROUTE_MODEM) || defined(TRX_ROUTE_FULL)
+        if (!Qam_Burst(frame))
+            ESP_LOGW(TAG, "QamModulator queue full, dropping frame");
+    #endif
+}
 
-    BaseType_t result = xQueueSend(s_packetEncoderInputQueue, &data, 0);
-    return (result);
+bool PacketEncoder_receiveTemperature(uint32_t data)
+{
+    if (s_packetEncoderTempQueue == NULL) return false;
+    return xQueueSend(s_packetEncoderTempQueue, &data, 0) == pdTRUE;
+}
+
+bool PacketEncoder_receiveTextByte(uint8_t byte)
+{
+    if (s_packetEncoderTextQueue == NULL) return false;
+    return xQueueSend(s_packetEncoderTextQueue, &byte, 0) == pdTRUE;
+}
+
+// ------------------------- Text packing ------------------------- //
+// 4 Bytes sammeln und als uint32_t schicken (MSB zuerst).
+
+uint32_t s_textWord  = 0;
+uint8_t  s_textCount = 0;   // 0..4
+uint8_t  s_textParam = 0;   // 0..255
+
+void Text_sendPackedWord(bool messageEnded)
+{
+    uint64_t frame = PacketEncoder_buildFrame(s_textWord, CMD_Text, s_textParam);
+    PacketEncoder_forwardFrame(frame);
+
+    s_textWord  = 0;
+    s_textCount = 0;
+
+    if (messageEnded)
+        s_textParam = 0;
+    else
+        s_textParam++;
 }
 
 
 void PacketEncoder_task(void *pvParameters)
 {
     (void)pvParameters;
-    uint32_t payload = 0;
 
     for (;;)
     {
-        // warten auf Payload vom DataProvider
-        if (xQueueReceive(s_packetEncoderInputQueue, &payload, portMAX_DELAY))
+        QueueSetMemberHandle_t activated =
+            xQueueSelectFromSet(s_packetEncoderQueueSet, portMAX_DELAY);
+
+        if (activated == s_packetEncoderTempQueue)
         {
-            uint64_t frame = PacketEncoder_buildFrame(payload);
-            // Debug
-            //ESP_LOGW(TAG, "Transmitted Frame: 0x%016llX", (unsigned long long)frame);
+            uint32_t payload = 0;
+            if (xQueueReceive(s_packetEncoderTempQueue, &payload, 0) == pdTRUE)
+            {
+                uint64_t frame = PacketEncoder_buildFrame(payload, CMD_Temp, 0);
+                PacketEncoder_forwardFrame(frame);
+            }
+        }
+        else if (activated == s_packetEncoderTextQueue)
+        {
+            uint8_t ch = 0;
+            if (xQueueReceive(s_packetEncoderTextQueue, &ch, 0) == pdTRUE)
+            {
+                // Packen: 1. Byte -> [31:24], 2. -> [23:16], 3. -> [15:8], 4. -> [7:0]
+                uint8_t shift = (uint8_t)(24 - (8U * s_textCount));
+                s_textWord |= ((uint32_t)ch) << shift;
+                s_textCount++;
 
-            if(!PacketDecoder_receivePacket(frame))
-                ESP_LOGW(TAG, "PacketDecoder queue full, dropping frame");
+                bool ended = (ch == '\0');
 
-            //if (!QamModulator_receivePacket(frame)) 
-            //    ESP_LOGW(TAG, "QamModulator queue full, dropping frame");
+                // Frame senden bei 4 Bytes ODER sobald Terminator drin ist
+                if (s_textCount >= 4 || ended)
+                    Text_sendPackedWord(ended);
+            }
         }
     }
 }
 
+
 void PacketEncoder_init(void)
 {
-    s_packetEncoderInputQueue = xQueueCreate(PACKETENCODER_INPUT_QUEUE_LEN, sizeof(uint32_t));
+    s_packetEncoderTempQueue = xQueueCreate(PACKETENCODER_TEMP_QUEUE_LEN, sizeof(uint32_t));
+    s_packetEncoderTextQueue = xQueueCreate(PACKETENCODER_TEXT_QUEUE_LEN, sizeof(uint8_t));
+
+    // QueueSet: beide zusammen überwachen
+    s_packetEncoderQueueSet =
+        xQueueCreateSet(PACKETENCODER_TEMP_QUEUE_LEN + PACKETENCODER_TEXT_QUEUE_LEN);
+
+    xQueueAddToSet(s_packetEncoderTempQueue, s_packetEncoderQueueSet);
+    xQueueAddToSet(s_packetEncoderTextQueue, s_packetEncoderQueueSet);
 
     xTaskCreate(
-        PacketEncoder_task, // Taskfunktion
-        "PacketEncoder",    // Name
-        2 * 2048,           // Stack
-        NULL,               // Parameter
-        6,                  // Priorität
-        NULL                // Handle
+        PacketEncoder_task,
+        "PacketEncoder",
+        2 * 2048,
+        NULL,
+        6,
+        NULL
     );
 }
