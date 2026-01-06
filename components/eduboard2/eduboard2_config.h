@@ -49,7 +49,13 @@
 
 
 /*DAC Output Config*/
-#define CONFIG_ENABLE_DAC
+#if defined(QAM_TX_MODE)
+    #define CONFIG_ENABLE_DAC
+#endif
+#if defined(QAM_TRX_MODE)
+    #define CONFIG_ENABLE_DAC
+#endif
+
 #ifdef CONFIG_ENABLE_DAC
     #define CONFIG_DAC_STREAMING
     #ifdef CONFIG_DAC_STREAMING
@@ -64,11 +70,15 @@
     #endif
 #endif
 
+
 /*LCD Config*/
-// #define CONFIG_ENABLE_LCD
+#if defined(QAM_RX_MODE)
+    #define CONFIG_ENABLE_LCD
+#endif
+
 #ifdef CONFIG_ENABLE_LCD
     // #define CONFIG_LCD_ST7789
-    // #define CONFIG_LCD_ILI9488
+    #define CONFIG_LCD_ILI9488
     
     // #define CONFIG_LCD_RESOLUTION_240x240
     // #define CONFIG_LCD_RESOLUTION_240x320

@@ -9,6 +9,15 @@
 
 #define TAG "QAM"
 
+
+
+#if defined(QAM_RX_MODE)
+    #define Invert      -1
+#else
+    #define Invert      1
+#endif
+
+
 #define PI          3.14
 #define sqrt18      4.24264
 #define sqrt2       1.412135
@@ -18,8 +27,6 @@
 #define Ampl_min    2100   
 //#define Offset      1935    // => 1.65V
 #define Offset      1642    // => 1.4V
-//c#define Invert      1
-#define Invert      -1
 
 
 #define Input_Pin       AN1
