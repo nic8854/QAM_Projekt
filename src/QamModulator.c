@@ -12,6 +12,8 @@
 #include "eduboard2.h"
 #include "QamModulator.h"
 
+#if defined(QAM_TX_MODE) || (defined(QAM_TRX_MODE) && !defined(TRX_ROUTE_PACKET))
+
 
 #define Ampl_factor 0.0885f         // entspricht 1.5Vpp
 
@@ -96,3 +98,5 @@ bool Qam_Burst(uint64_t Data){
 
     return true;
 }
+
+#endif

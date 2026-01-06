@@ -1,4 +1,4 @@
-#include "ProjectConfig.h"
+#include "eduboard2.h"
 #include "PacketEncoder.h"
 #include "PacketDecoder.h"
 #include "QamModulator.h"
