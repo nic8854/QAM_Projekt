@@ -234,32 +234,38 @@ uint64_t map_QAM_Buffer(int16_t *adcBuf)
 
 
 
+// uint64_t QAM_get_Data()
+// {   
+//     uint64_t Data_out;
+//     led_toggle(LED6);
+//     QAM_receive = false;
+//     Data_out = Data;
+//     Data = 0xFFFF;
+//     return Data_out;
+// }
 
-uint64_t QAM_get_Data()
-{   
-    uint64_t Data_out;
-    led_toggle(LED6);
-    QAM_receive = false;
-    Data_out = Data;
-    Data = 0xFFFF;
-    return Data_out;
-}
+
+
+////////////////////////////////////////// API
 
 
 void QamDemodulator(){
     while(1){
-    vTaskDelay(200);
-    if (Buffer_compl)
-    {   
-        for (size_t i = 0; i < ADC_Read_BUFFER_SIZE; i++)
-        {
-            //printf("%d\n", adcReadBuffer[i]);
+        vTaskDelay(100);
+        if (Buffer_compl)
+        {   
+            for (size_t i = 0; i < ADC_Read_BUFFER_SIZE; i++)
+            {
+                //printf("%d\n", adcReadBuffer[i]);
+            }
+            Data = map_QAM_Buffer(adcReadBuffer);
+            Buffer_compl = false;
+            printf("QAM Packet = 0x%016llX\n", (unsigned long long)Data);
+            
+            
+            PacketDecoder_receivePacket(Data);
         }
-        Data = map_QAM_Buffer(adcReadBuffer);
-    Buffer_compl = false;
-    printf("QAM Packet = 0x%016llX\n", (unsigned long long)Data);
     }
-}
 }
 
 void InitQamDemodulator(){
