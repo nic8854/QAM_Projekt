@@ -26,15 +26,52 @@
 #include "math.h"
 #include <stdio.h>
 
+
 // Header files
-#include "AdcDataRelay.h"
-#include "DacDataRelay.h"
-#include "DataProvider.h"
-#include "GuiDriver.h"
-#include "PacketDecoder.h"
-#include "PacketEncoder.h"
-#include "QamDemodulator.h"
-#include "QamModulator.h"
+#if defined(QAM_TX_MODE)
+
+  #include "DacDataRelay.h"
+  #include "DataProvider.h"
+  #include "PacketEncoder.h"
+  #include "QamModulator.h"
+
+#elif defined(QAM_RX_MODE)
+
+  #include "AdcDataRelay.h"
+  #include "GuiDriver.h"
+  #include "PacketEncoder.h"
+  #include "QamDemodulator.h"
+
+#elif defined(QAM_TRX_MODE)
+
+  #if defined(TRX_ROUTE_PACKET)
+
+    #include "DataProvider.h"
+    #include "GuiDriver.h"
+    #include "PacketDecoder.h"
+    #include "PacketEncoder.h"
+
+  #elif defined(TRX_ROUTE_MODEM)
+
+    #include "DataProvider.h"
+    #include "PacketDecoder.h"
+    #include "PacketEncoder.h"
+    #include "QamDemodulator.h"
+    #include "QamModulator.h"
+
+  #elif defined(TRX_ROUTE_FULL)
+
+    #include "AdcDataRelay.h"
+    #include "DacDataRelay.h"
+    #include "DataProvider.h"
+    #include "PacketDecoder.h"
+    #include "PacketEncoder.h"
+    #include "QamDemodulator.h"
+    #include "QamModulator.h"
+
+  #endif
+
+#endif
 
 // ---------------------------------------------------------------------------- //
 
@@ -92,7 +129,7 @@ void app_init(void)
 
 #define UPDATETIME_MS 100
 
-
+/*
 void QAM_receive_Data(void* param) {
     //Init stuff here
     ESP_LOGI(TAG, "Task started!");
@@ -108,7 +145,7 @@ void QAM_receive_Data(void* param) {
             ESP_LOGI(TAG, "QAM Data = 0x%016" PRIx64, d);
         }
     }
-}
+}*/
 
 
 void app_main()
