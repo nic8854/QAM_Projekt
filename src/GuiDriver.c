@@ -15,7 +15,7 @@
 #include <string.h>
 #include <math.h>
 
-#if defined(QAM_TX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+#if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
 
 
 // -------------------- Settings --------------------
