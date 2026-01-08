@@ -7,6 +7,8 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 
+#if defined(QAM_RX_MODE) || defined(QAM_TRX_MODE)
+
 static const char *TAG = "PacketDecoder";
 
 static QueueHandle_t packetQueue = NULL;
@@ -24,7 +26,7 @@ static void PacketDecoder_task(void *pvParameters) {
     uint64_t packet;
     
     while (1) {
-        if (xQueueReceive(packetQueue, &packet, portMAX_DELAY) == pdTRUE) {
+        if (xQueueReceive(packetQueue, &packet, pdMS_TO_TICKS(50)) == pdTRUE) {
             ESP_LOGI(TAG, "Received packet: 0x%llX", packet);
             
             // Verify checksum
@@ -129,3 +131,5 @@ bool PacketDecoder_verifyChecksum__(uint64_t packet) {
     uint8_t receivedChecksum = PacketDecoder_getChecksumByte__(packet);
     return (calculatedChecksum == receivedChecksum);
 }
+
+#endif
