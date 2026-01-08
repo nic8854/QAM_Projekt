@@ -1,4 +1,5 @@
 #include "PacketDecoder.h"
+#include "GuiDriver.h"
 
 #include "math.h"
 #include "freertos/FreeRTOS.h"
@@ -39,15 +40,18 @@ static void PacketDecoder_task(void *pvParameters) {
                     float temperature;
                     memcpy(&temperature, &data, sizeof(float));
                     ESP_LOGI(TAG, "Temperature command received: %.2fC", temperature);
-                    // GuiDriver_receiveTemperature(temperature);
+                    GuiDriver_receiveTemperature(temperature);
                     break;
                 }
                 case 0x20: {
                     uint32_t data = PacketDecoder_getData__(packet);
                     char text[4];
-                    memcpy(&text, &data, sizeof(char[4]));
+                    text[0] = (char)((data >> 24) & 0xFF);
+                    text[1] = (char)((data >> 16) & 0xFF);
+                    text[2] = (char)((data >> 8) & 0xFF);
+                    text[3] = (char)(data & 0xFF);
                     ESP_LOGI(TAG, "Text command received: %c%c%c%c", text[0], text[1], text[2], text[3]);
-                    // GuiDriver_receiveText(text);
+                    GuiDriver_receiveText(text);
                     break;
                 }
                 default:
@@ -55,6 +59,7 @@ static void PacketDecoder_task(void *pvParameters) {
                     break;
             }
         }
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 

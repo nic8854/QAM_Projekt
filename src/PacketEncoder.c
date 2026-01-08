@@ -1,4 +1,4 @@
-#include "ProjectConfig.h"
+#include "eduboard2.h"
 #include "PacketEncoder.h"
 #include "PacketDecoder.h"
 #include "QamModulator.h"
@@ -19,9 +19,10 @@
 #define CMD_Temp  0x10
 #define CMD_Text  0x20
 
-// Queues
+// Queues + QueueSet
 QueueHandle_t s_packetEncoderTempQueue = NULL;
 QueueHandle_t s_packetEncoderTextQueue = NULL;
+QueueSetHandle_t s_packetEncoderQueueSet = NULL;
 
 // ------------------------- Checksum & Frame ------------------------- //
 
@@ -130,34 +131,38 @@ void PacketEncoder_task(void *pvParameters)
 {
     (void)pvParameters;
 
-    uint64_t frame = 0;
-    uint32_t payload = 0;
-    uint8_t ch = 0;
-    uint8_t shift = 0;
-
     for (;;)
     {
-        if (xQueueReceive(s_packetEncoderTempQueue, &payload, 0) == pdTRUE)
+        QueueSetMemberHandle_t activated =
+            xQueueSelectFromSet(s_packetEncoderQueueSet, portMAX_DELAY);
+
+        if (activated == s_packetEncoderTempQueue)
         {
-            frame = PacketEncoder_buildFrame(payload, CMD_Temp, 0);
-            PacketEncoder_forwardFrame(frame);
+            uint32_t payload = 0;
+            if (xQueueReceive(s_packetEncoderTempQueue, &payload, 0) == pdTRUE)
+            {
+                uint64_t frame = PacketEncoder_buildFrame(payload, CMD_Temp, 0);
+                PacketEncoder_forwardFrame(frame);
+            }
         }
-        if (xQueueReceive(s_packetEncoderTextQueue, &ch, 0) == pdTRUE)
+        else if (activated == s_packetEncoderTextQueue)
         {
-            // Packen: 1. Byte -> [31:24], 2. -> [23:16], 3. -> [15:8], 4. -> [7:0]
-            shift = (uint8_t)(24 - (8U * s_textCount));
-            s_textWord |= ((uint32_t)ch) << shift;
-            s_textCount++;
+            uint8_t ch = 0;
+            if (xQueueReceive(s_packetEncoderTextQueue, &ch, 0) == pdTRUE)
+            {
+                // Packen: 1. Byte -> [31:24], 2. -> [23:16], 3. -> [15:8], 4. -> [7:0]
+                uint8_t shift = (uint8_t)(24 - (8U * s_textCount));
+                s_textWord |= ((uint32_t)ch) << shift;
+                s_textCount++;
 
-            bool ended = (ch == '\0');
+                bool ended = (ch == '\0');
 
-            // Frame senden bei 4 Bytes ODER sobald Terminator drin ist
-            if (s_textCount >= 4 || ended)
-                Text_sendPackedWord(ended);
+                // Frame senden bei 4 Bytes ODER sobald Terminator drin ist
+                if (s_textCount >= 4 || ended)
+                    Text_sendPackedWord(ended);
+            }
         }
     }
-
-    vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 
@@ -165,6 +170,13 @@ void PacketEncoder_init(void)
 {
     s_packetEncoderTempQueue = xQueueCreate(PACKETENCODER_TEMP_QUEUE_LEN, sizeof(uint32_t));
     s_packetEncoderTextQueue = xQueueCreate(PACKETENCODER_TEXT_QUEUE_LEN, sizeof(uint8_t));
+
+    // QueueSet: beide zusammen überwachen
+    s_packetEncoderQueueSet =
+        xQueueCreateSet(PACKETENCODER_TEMP_QUEUE_LEN + PACKETENCODER_TEXT_QUEUE_LEN);
+
+    xQueueAddToSet(s_packetEncoderTempQueue, s_packetEncoderQueueSet);
+    xQueueAddToSet(s_packetEncoderTextQueue, s_packetEncoderQueueSet);
 
     xTaskCreate(
         PacketEncoder_task,
