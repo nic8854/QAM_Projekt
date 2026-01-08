@@ -10,12 +10,12 @@
 #include "GuiDriver.h"
 
 
-#include "math.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
 
-#if defined(QAM_TX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+
+#if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
 
 
 // -------------------- Settings --------------------
@@ -254,8 +254,6 @@ static void GuiDriver_task(void *pv)
     (void)pv;
     TickType_t last = xTaskGetTickCount();
 
-// TEST: einmal einen Wert schicken
- //   GuiDriver_pushTemperature(23.5f);
 
     for (;;) {
         // neue Samples abholen (alle, die anstehen)
@@ -282,8 +280,8 @@ static void GuiDriver_task(void *pv)
     }
 }
 
-// CHANGE: InitGuiDriver() -> GuiDriver_init() (laut geforderter API)
-void GuiDriver_init(void) // CHANGE: neuer API-Name
+
+void GuiDriver_init(void) 
 {
     lcdFillScreen(BLACK);
     // Queue
@@ -307,7 +305,7 @@ void GuiDriver_init(void) // CHANGE: neuer API-Name
     //memset(s_textLine, ' ', GUI_TEXT_LINE_LEN);
    // s_textLine[GUI_TEXT_LINE_LEN] = '\0';
 
-//  NEU: Laufzeile initialisieren (48 Leerzeichen, damit sie von Anfang an >= 48 Zeichen ist)
+//  NEU: Laufzeile initialisieren lehr
 s_textLine[0] = '\0';
 
 
@@ -322,8 +320,8 @@ s_textLine[0] = '\0';
     );
 }
 
-// CHANGE: GuiDriver_pushTemperature() -> GuiDriver_receiveTemperature() (laut API)
-bool GuiDriver_receiveTemperature(float tempC) // CHANGE: neuer API-Name
+
+bool GuiDriver_receiveTemperature(float tempC) 
 {
     if (s_guiQ == NULL) return false;
     GuiSample_t s = {.tempC = tempC};
