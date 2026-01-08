@@ -13,10 +13,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-
-
-#if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
-
+#include <math.h>
 
 // -------------------- Settings --------------------
 #define GUI_PERIOD_MS          100      // Display refresh
@@ -300,14 +297,6 @@ void GuiDriver_init(void)
     memcpy(s_latestText, "----", 5);
     s_dropTemp = 0;                 
     s_dropText = 0;                 
-
-    //  NEU: Laufzeile initialisieren (48 Leerzeichen, damit sie von Anfang an >= 48 Zeichen ist)
-    //memset(s_textLine, ' ', GUI_TEXT_LINE_LEN);
-   // s_textLine[GUI_TEXT_LINE_LEN] = '\0';
-
-//  NEU: Laufzeile initialisieren lehr
-s_textLine[0] = '\0';
-
 
     // Task starten
     xTaskCreate(
