@@ -251,7 +251,7 @@ uint64_t map_QAM_Buffer(int16_t *adcBuf)
 
 void QamDemodulator(){
     while(1){
-        vTaskDelay(100);
+        vTaskDelay(300);
         if (Buffer_compl)
         {   
             for (size_t i = 0; i < ADC_Read_BUFFER_SIZE; i++)

@@ -105,7 +105,7 @@ void QamModulator(void *pvParameters)
 {
     while (1)
     {
-        vTaskDelay(100);
+        vTaskDelay(300);
         if (count > 0)
         {
             Qam_Burst(packetQueue[rdIdx]);
