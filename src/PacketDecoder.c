@@ -7,6 +7,8 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 
+#if defined(QAM_RX_MODE) || defined(QAM_TRX_MODE)
+
 static const char *TAG = "PacketDecoder";
 
 static QueueHandle_t packetQueue = NULL;
@@ -129,3 +131,5 @@ bool PacketDecoder_verifyChecksum__(uint64_t packet) {
     uint8_t receivedChecksum = PacketDecoder_getChecksumByte__(packet);
     return (calculatedChecksum == receivedChecksum);
 }
+
+#endif
