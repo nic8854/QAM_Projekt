@@ -24,7 +24,7 @@ static void PacketDecoder_task(void *pvParameters) {
     uint64_t packet;
     
     while (1) {
-        if (xQueueReceive(packetQueue, &packet, portMAX_DELAY) == pdTRUE) {
+        if (xQueueReceive(packetQueue, &packet, pdMS_TO_TICKS(50)) == pdTRUE) {
             ESP_LOGI(TAG, "Received packet: 0x%llX", packet);
             
             // Verify checksum
