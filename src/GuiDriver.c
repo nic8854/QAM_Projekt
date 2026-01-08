@@ -6,25 +6,6 @@
 /********************************************************************************************* */
 
 
-
-/*
-Description
-This module displays the received value as well as displaying different statistics on how the system is performing.
-
-API
-Init Function
-void GuiDriver_init();
-This function initializes the module
-
-bool GuiDriver_receiveTemperature(float temperature);
-This function is responsible for feeding the internal temperature queue with float values.
-
-bool GuiDriver_receiveText(char text[4]);
-This function is responsible for feeding the internal text queue. Each queue element conatins 4 text characters.
-*/
-
-
-
 #include "eduboard2.h"
 #include "GuiDriver.h"
 
@@ -33,6 +14,9 @@ This function is responsible for feeding the internal text queue. Each queue ele
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+
+#if defined(QAM_TX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+
 
 // -------------------- Settings --------------------
 #define GUI_PERIOD_MS          100      // Display refresh
@@ -54,8 +38,7 @@ This function is responsible for feeding the internal text queue. Each queue ele
 #define TEMP_MAX_FIXED         35.0f
 // --------------------------------------------------
 
-// CHANGE: Plot-Breite an HISTORY_LEN anpassen, damit Rahmen und Datenbreite zusammenpassen
-// (lcdDrawDataUInt8 zeichnet hier HISTORY_LEN Samples -> Rahmen muss gleich breit sein)
+
 #undef  PLOT_W
 #define PLOT_W                 HISTORY_LEN   // CHANGE: vorher 410
 
@@ -85,6 +68,13 @@ static char s_latestText[5] = "----"; // 4 Zeichen + '\0'
 //  Statistik: wie viele Werte beim Senden verworfen wurden (Queue voll)
 static uint32_t s_dropTemp = 0; 
 static uint32_t s_dropText = 0; 
+
+//  NEU: zusammengeführte Textzeile (mindestens 48 Zeichen) für die Anzeige
+//  - Wir speichern IMMER exakt die letzten 48 Zeichen (Rolling Window)
+//  - Neue 4-Zeichen-Blöcke werden rechts angehängt, links fällt entsprechend weg
+//  - Für lcdDrawString terminieren wir mit '\0'
+#define GUI_TEXT_LINE_LEN      48
+static char s_textLine[GUI_TEXT_LINE_LEN + 1]; // 48 Zeichen + '\0'
 
 static void hist_push(float v)
 {
@@ -134,6 +124,41 @@ static uint8_t temp_to_u8(float t, float tMin, float tMax)
     return (uint8_t)(n * 255.0f);
 }
 
+//  NEU: 4 Zeichen in die 48-Zeichen-Anzeigezeile einfügen (Rolling Window)
+//  - schiebt die bestehende Zeile um 4 nach links
+//  - hängt die neuen 4 Zeichen rechts an
+/*static void textline_push4(const char in4[4])
+{
+    memmove(&s_textLine[0], &s_textLine[4], GUI_TEXT_LINE_LEN - 4);
+    memcpy(&s_textLine[GUI_TEXT_LINE_LEN - 4], in4, 4);
+    s_textLine[GUI_TEXT_LINE_LEN] = '\0';
+}
+*/
+
+static void textline_push4(const char in4[4])
+{
+    uint16_t len = (uint16_t)strlen(s_textLine);
+
+    // Wenn voll: Rolling Window (links 4 weg)
+    if (len >= GUI_TEXT_LINE_LEN) {
+        memmove(&s_textLine[0], &s_textLine[4], GUI_TEXT_LINE_LEN - 4);
+        len = (uint16_t)(GUI_TEXT_LINE_LEN - 4);
+        s_textLine[len] = '\0';
+    }
+
+    // Falls weniger als 4 Platz: so kürzen, dass 4 reinpassen
+    if (len > (GUI_TEXT_LINE_LEN - 4)) {
+        uint16_t overflow = (uint16_t)(len - (GUI_TEXT_LINE_LEN - 4));
+        memmove(&s_textLine[0], &s_textLine[overflow], (size_t)(len - overflow));
+        len = (uint16_t)(len - overflow);
+        s_textLine[len] = '\0';
+    }
+
+    // 4 Zeichen anhängen
+    memcpy(&s_textLine[len], in4, 4);
+    s_textLine[len + 4] = '\0';
+}
+
 static void draw_screen(void)
 {
    lcdFillScreen(BLACK);
@@ -150,11 +175,34 @@ static void draw_screen(void)
     }
     lcdDrawString(fx24M, 10, 60, line, WHITE);
 
+
+
     //  Anzeige vom letzten Text (4 Zeichen)
     
-    char textLine[32]; 
-    snprintf(textLine, sizeof(textLine), "Text: %s", s_latestText); 
-    lcdDrawString(fx24M, 260, 60, textLine, WHITE); //  (Position ggf. anpassen)
+    //  NEU: zusammengeführte Textzeile (48 Zeichen) unter "Current" ausgeben
+    //  - Die Zeile ist IMMER mindestens 48 Zeichen lang (intern 48 Zeichen + '\0')
+    //  - Auf dem Display zeigen wir exakt 48 Zeichen an (ggf. mit Leerzeichen aufgefüllt)
+    //char textLine[64]; 
+    //snprintf(textLine, sizeof(textLine), "Text: %.48s", s_textLine); 
+    //lcdDrawString(fx24M, 10, 85, textLine, WHITE); //  unter Current (Position ggf. anpassen)
+
+    //  NEU: führende Leerzeichen für die Anzeige überspringen
+//  - Intern bleibt s_textLine weiterhin exakt 48 Zeichen lang
+//  - Auf dem Display wird links kein "leerer Abstand" angezeigt
+/*const char *p = s_textLine;
+while (*p == ' ' && *(p + 1) != '\0') {
+    p++;   // führende Leerzeichen überspringen
+}
+*/
+char textLine[64];
+snprintf(textLine, sizeof(textLine), "Text: %s", s_textLine);
+lcdDrawString(fx24M, 10, 85, textLine, WHITE); // unter "Current"
+
+/*
+char textLine[64];
+snprintf(textLine, sizeof(textLine), "Text: %s", p);
+lcdDrawString(fx24M, 10, 85, textLine, WHITE); // unter "Current"
+*/
 
     // Plot-Rahmen
     lcdDrawRect(PLOT_X, PLOT_Y, PLOT_X + PLOT_W, PLOT_Y + PLOT_H, BLUE);
@@ -219,9 +267,13 @@ static void GuiDriver_task(void *pv)
 
         // Text-Queue ebenfalls leeren, aktuellsten Text behalten
         GuiText_t t; 
+        //  NEU: alle anstehenden 4-Zeichen-Blöcke abholen und in die 48-Zeichen-Zeile einfügen
         if (xQueueReceive(s_textQ, &t, 0) == pdTRUE) { 
             memcpy(s_latestText, t.text, 4); // exakt 4 chars
             s_latestText[4] = '\0';          //  für Anzeige terminieren
+
+            //  NEU: 4 Zeichen an die Laufzeile anhängen (Rolling Window)
+            textline_push4(t.text);
         }
 
         draw_screen();
@@ -250,6 +302,14 @@ void GuiDriver_init(void) // CHANGE: neuer API-Name
     memcpy(s_latestText, "----", 5);
     s_dropTemp = 0;                 
     s_dropText = 0;                 
+
+    //  NEU: Laufzeile initialisieren (48 Leerzeichen, damit sie von Anfang an >= 48 Zeichen ist)
+    //memset(s_textLine, ' ', GUI_TEXT_LINE_LEN);
+   // s_textLine[GUI_TEXT_LINE_LEN] = '\0';
+
+//  NEU: Laufzeile initialisieren (48 Leerzeichen, damit sie von Anfang an >= 48 Zeichen ist)
+s_textLine[0] = '\0';
+
 
     // Task starten
     xTaskCreate(
@@ -291,3 +351,4 @@ bool GuiDriver_receiveText(char text[4])
     }
     return true;
 }
+#endif
