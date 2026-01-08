@@ -18,7 +18,7 @@
 #define Ampl_factor 0.0885f         // entspricht 1.5Vpp
 
 // Samplerate 100 uS
-#define QAM_TABLE_SIZE  128       // 128 Samples pro Sinusperiode => 156.25 Hz
+#define QAM_TABLE_SIZE  64       // 64 Samples pro Sinusperiode => 156.25 Hz
 
 #define Anz_Bits        64       // Anzahl Bits
 // #define Offset          104       // 104 => 1.65V
@@ -28,6 +28,8 @@ static int8_t sinetable[QAM_TABLE_SIZE];
 static int8_t cosinetable[QAM_TABLE_SIZE];
 
 static uint8_t Stream_Data[QAM_TABLE_SIZE];
+
+#define TAG "QAM"
 
 
 void dacCallbackFunction() {
@@ -79,47 +81,36 @@ bool Qam_Burst(uint64_t Data){
 
 ////////////////////////////////////////// API
 
-#define QAM_PACKET_QUEUE_SIZE 8
 
-static uint64_t packetQueue[QAM_PACKET_QUEUE_SIZE];
-static uint8_t wrIdx = 0;
-static uint8_t rdIdx = 0;
-static uint8_t count = 0;
+static QueueHandle_t packetQueue = NULL;
 
-
-bool QamModulator_receivePacket(uint64_t packet)
-{
-    if (count >= QAM_PACKET_QUEUE_SIZE)
-    {
-        return false; // Queue voll
+bool PacketDecoder_receivePacket(uint64_t packet) {
+    if (packetQueue == NULL) {
+        return false;
     }
-
-    packetQueue[wrIdx] = packet;
-    wrIdx = (wrIdx + 1) % QAM_PACKET_QUEUE_SIZE;
-    count++;
-
-    return true;
+    ESP_LOGI(TAG, "DATA RECEIVED");
+    bool result = xQueueSend(packetQueue, &packet, 0);
+    return result;
 }
 
 void QamModulator(void *pvParameters)
 {
+    uint64_t packet;
+
     while (1)
     {
         vTaskDelay(300);
-        if (count > 0)
-        {
-            Qam_Burst(packetQueue[rdIdx]);
-
-            rdIdx = (rdIdx + 1) % QAM_PACKET_QUEUE_SIZE;
-            count--;
-        }       
+        if (xQueueReceive(packetQueue, &packet, portMAX_DELAY) == pdTRUE) {
+            ESP_LOGI(TAG, "DATA COMPUTED");
+            Qam_Burst(packet);
+        }
     }
 }
 
 
 void InitQamModulator(){
 
-    eduboard_init_dac();
+    //eduboard_init_dac();
 
     // Sinus und Cosiunustabelle erzeugen
     for (int i = 0; i < QAM_TABLE_SIZE; i++) {
@@ -139,6 +130,9 @@ void InitQamModulator(){
 
     // Starte Stream
     Qam_DAC_Stream (1,1);
+
+
+    packetQueue = xQueueCreate(100, sizeof(uint64_t));
 
     xTaskCreate(QamModulator,   //Subroutine
                 "QAMModulator",  //Name
