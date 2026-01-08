@@ -18,7 +18,7 @@
 #define Ampl_factor 0.0885f         // entspricht 1.5Vpp
 
 // Samplerate 100 uS
-#define QAM_TABLE_SIZE  128       // 127 Samples pro Sinusperiode => 78.74 Hz
+#define QAM_TABLE_SIZE  64       // 64 Samples pro Sinusperiode => 156.25 Hz
 
 #define Anz_Bits        64       // Anzahl Bits
 // #define Offset          104       // 104 => 1.65V
@@ -29,35 +29,13 @@ static int8_t cosinetable[QAM_TABLE_SIZE];
 
 static uint8_t Stream_Data[QAM_TABLE_SIZE];
 
+#define TAG "QAM"
+
 
 void dacCallbackFunction() {
     
 }
 
-
-void InitQamModulator(){
-
-    void eduboard_init_dac();
-
-    // Sinus und Cosiunustabelle erzeugen
-    for (int i = 0; i < QAM_TABLE_SIZE; i++) {
-        float val = sinf(2.0f * M_PI * i / QAM_TABLE_SIZE); // -1..1
-        sinetable[i] = (int8_t)(val * 127);                 // -127..127
-
-        val = cosf(2.0f * M_PI * i / QAM_TABLE_SIZE);       // -1..1
-        cosinetable[i] = (int8_t)(val * 127);               // -127..127
-    }
-
-    // 2️⃣ DAC konfigurieren
-    dac_set_config(DAC_A, DAC_GAIN_2, true);
-    dac_set_config(DAC_B, DAC_GAIN_2, true);
-    dac_update();
-
-    dac_set_stream_callback(&dacCallbackFunction); 
-
-    // Starte Stream
-    Qam_DAC_Stream (1,1);
-}
 
 
 void Qam_DAC_Stream(int8_t I, int8_t Q)
@@ -98,5 +76,71 @@ bool Qam_Burst(uint64_t Data){
 
     return true;
 }
+
+
+
+////////////////////////////////////////// API
+
+
+static QueueHandle_t packetQueue = NULL;
+
+bool PacketDecoder_receivePacket(uint64_t packet) {
+    if (packetQueue == NULL) {
+        return false;
+    }
+    ESP_LOGI(TAG, "DATA RECEIVED");
+    bool result = xQueueSend(packetQueue, &packet, 0);
+    return result;
+}
+
+void QamModulator(void *pvParameters)
+{
+    uint64_t packet;
+
+    while (1)
+    {
+        vTaskDelay(300);
+        if (xQueueReceive(packetQueue, &packet, portMAX_DELAY) == pdTRUE) {
+            ESP_LOGI(TAG, "DATA COMPUTED");
+            Qam_Burst(packet);
+        }
+    }
+}
+
+
+void InitQamModulator(){
+
+    //eduboard_init_dac();
+
+    // Sinus und Cosiunustabelle erzeugen
+    for (int i = 0; i < QAM_TABLE_SIZE; i++) {
+        float val = sinf(2.0f * M_PI * i / QAM_TABLE_SIZE); // -1..1
+        sinetable[i] = (int8_t)(val * 127);                 // -127..127
+
+        val = cosf(2.0f * M_PI * i / QAM_TABLE_SIZE);       // -1..1
+        cosinetable[i] = (int8_t)(val * 127);               // -127..127
+    }
+
+    // 2️⃣ DAC konfigurieren
+    dac_set_config(DAC_A, DAC_GAIN_2, true);
+    dac_set_config(DAC_B, DAC_GAIN_2, true);
+    dac_update();
+
+    dac_set_stream_callback(&dacCallbackFunction); 
+
+    // Starte Stream
+    Qam_DAC_Stream (1,1);
+
+
+    packetQueue = xQueueCreate(100, sizeof(uint64_t));
+
+    xTaskCreate(QamModulator,   //Subroutine
+                "QAMModulator",  //Name
+                2*2048,         //Stacksize
+                NULL,           //Parameters
+                5,             //Priority
+                NULL);          //Taskhandle
+}
+
 
 #endif
