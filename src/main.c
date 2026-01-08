@@ -15,7 +15,6 @@
 
 // --------------------------------- INCLUDES --------------------------------- //
 
-#include "ProjectConfig.h"
 #include "eduboard2.h"
 #include "esp_log.h"
 #include "memon.h"
