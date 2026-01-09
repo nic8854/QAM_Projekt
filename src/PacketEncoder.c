@@ -138,6 +138,8 @@ void PacketEncoder_task(void *pvParameters)
 
     for (;;)
     {
+        vTaskDelay(100);
+        uint32_t payload = 0;
         if (xQueueReceive(s_packetEncoderTempQueue, &payload, 0) == pdTRUE)
         {
             frame = PacketEncoder_buildFrame(payload, CMD_Temp, 0);
