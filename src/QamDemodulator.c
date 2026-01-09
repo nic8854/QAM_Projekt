@@ -264,12 +264,12 @@ void QamDemodulator(void *param){
             printf("QAM Packet = 0x%016llX\n", (unsigned long long)Data);
             
             
-            PacketDecoder_receivePacket(Data);
+            QamDemodulator_receivePacket(Data);
         }
     }
 }
 
-void InitQamDemodulator(){
+void QamDemodulator_init(){
 
     sync_Amplitude = Ampl_Start;
     // Sinus und Cosiunustabelle erzeugen

@@ -84,7 +84,7 @@ bool Qam_Burst(uint64_t Data){
 
 static QueueHandle_t packetQueue = NULL;
 
-bool PacketDecoder_receivePacket(uint64_t packet) {
+bool QamModulator_receivePacket(uint64_t packet) {
     if (packetQueue == NULL) {
         return false;
     }
@@ -108,7 +108,7 @@ void QamModulator(void *pvParameters)
 }
 
 
-void InitQamModulator(){
+void QamModulator_init(){
 
     //eduboard_init_dac();
 

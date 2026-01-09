@@ -44,13 +44,13 @@ void app_init(void)
 
     DataProvider_init();
     PacketEncoder_init();
-    InitQamModulator();
+    QamModulator_init();
     //InitDacDataRelay();
 
 #elif defined(QAM_RX_MODE)
 
     //InitAdcDataRelay();
-    InitQamDemodulator();
+    QamDemodulator_init();
     //PacketDecoder_init();
     //GuiDriver_init();
 
@@ -67,16 +67,16 @@ void app_init(void)
 
     DataProvider_init();
     PacketEncoder_init();
-    InitQamModulator();
-    InitQamDemodulator();
+    QamModulator_init();
+    QamDemodulator_init();
     PacketDecoder_init();
 
   #elif defined(TRX_ROUTE_FULL)
 
     DataProvider_init();
     PacketEncoder_init();
-    InitQamModulator();
-    InitQamDemodulator();
+    QamModulator_init();
+    QamDemodulator_init();
     PacketDecoder_init();
 
   #endif
