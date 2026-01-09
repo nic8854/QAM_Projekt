@@ -7,7 +7,7 @@
 
 extern bool QAM_receive;
 
-void InitQamDemodulator();
+void QamDemodulator_init();
 void QamDemodulator();
 
 uint64_t QAM_get_Data();
@@ -28,7 +28,7 @@ uint32_t array_zero_pos(int32_t *arr, int length);
 void sync_Ampl(int16_t Ampl_meas);
 
 
-bool PacketDecoder_receivePacket(uint64_t packet);
+bool QamDemodulator_receivePacket(uint64_t packet);
 
 
 

@@ -84,7 +84,7 @@ bool Qam_Burst(uint64_t Data){
 
 static QueueHandle_t packetQueue = NULL;
 
-bool PacketDecoder_receivePacket(uint64_t packet) {
+bool QamModulator_receivePacket(uint64_t packet) {
     if (packetQueue == NULL) {
         return false;
     }
@@ -99,7 +99,7 @@ void QamModulator(void *pvParameters)
 
     while (1)
     {
-        vTaskDelay(300);
+        vTaskDelay(100);
         if (xQueueReceive(packetQueue, &packet, portMAX_DELAY) == pdTRUE) {
             ESP_LOGI(TAG, "DATA COMPUTED");
             Qam_Burst(packet);
@@ -108,7 +108,7 @@ void QamModulator(void *pvParameters)
 }
 
 
-void InitQamModulator(){
+void QamModulator_init(){
 
     //eduboard_init_dac();
 

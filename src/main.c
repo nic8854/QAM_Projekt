@@ -44,13 +44,15 @@ void app_init(void)
 
     DataProvider_init();
     PacketEncoder_init();
-    InitQamModulator();
+    QamModulator_init();
+    //InitDacDataRelay();
 
 #elif defined(QAM_RX_MODE)
 
-    InitQamDemodulator();
-    PacketDecoder_init();
-    GuiDriver_init();
+    //InitAdcDataRelay();
+    QamDemodulator_init();
+    //PacketDecoder_init();
+    //GuiDriver_init();
 
 #elif defined(QAM_TRX_MODE)
 
@@ -65,16 +67,16 @@ void app_init(void)
 
     DataProvider_init();
     PacketEncoder_init();
-    InitQamModulator();
-    InitQamDemodulator();
+    QamModulator_init();
+    QamDemodulator_init();
     PacketDecoder_init();
 
   #elif defined(TRX_ROUTE_FULL)
 
     DataProvider_init();
     PacketEncoder_init();
-    InitQamModulator();
-    InitQamDemodulator();
+    QamModulator_init();
+    QamDemodulator_init();
     PacketDecoder_init();
 
   #endif
@@ -95,7 +97,7 @@ void app_main()
     app_init();
 
     // Log Zeug deaktivieren
-    esp_log_level_set("*", ESP_LOG_INFO);
+    //esp_log_level_set("*", ESP_LOG_INFO);
 
 
     // Create templateTask
@@ -107,7 +109,9 @@ void app_main()
     //             NULL);          //Taskhandle
 
     for(;;) {
-        vTaskDelay(2000/portTICK_PERIOD_MS);
+        vTaskDelay(10000/portTICK_PERIOD_MS);
         //ESP_LOGI(TAG, "Hello Eduboard");
+       // Qam_Burst(0x0F0F0F0F0F0F0F0F);
+        //ESP_LOGI(TAG, "DATA SENT");
     }
 }
