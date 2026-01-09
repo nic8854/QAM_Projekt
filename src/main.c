@@ -28,50 +28,12 @@
 
 
 // Header files
-#if defined(QAM_TX_MODE)
-
-  #include "DacDataRelay.h"
-  #include "DataProvider.h"
-  #include "PacketEncoder.h"
-  #include "QamModulator.h"
-
-#elif defined(QAM_RX_MODE)
-
-  #include "AdcDataRelay.h"
-  #include "GuiDriver.h"
-  #include "PacketEncoder.h"
-  #include "QamDemodulator.h"
-
-#elif defined(QAM_TRX_MODE)
-
-  #if defined(TRX_ROUTE_PACKET)
-
-    #include "DataProvider.h"
-    #include "GuiDriver.h"
-    #include "PacketDecoder.h"
-    #include "PacketEncoder.h"
-
-  #elif defined(TRX_ROUTE_MODEM)
-
-    #include "DataProvider.h"
-    #include "PacketDecoder.h"
-    #include "PacketEncoder.h"
-    #include "QamDemodulator.h"
-    #include "QamModulator.h"
-
-  #elif defined(TRX_ROUTE_FULL)
-
-    #include "AdcDataRelay.h"
-    #include "DacDataRelay.h"
-    #include "DataProvider.h"
-    #include "PacketDecoder.h"
-    #include "PacketEncoder.h"
-    #include "QamDemodulator.h"
-    #include "QamModulator.h"
-
-  #endif
-
-#endif
+#include "DataProvider.h"
+#include "PacketDecoder.h"
+#include "PacketEncoder.h"
+#include "QamDemodulator.h"
+#include "QamModulator.h"
+#include "GuiDriver.h"
 
 // ---------------------------------------------------------------------------- //
 
@@ -114,8 +76,6 @@ void app_init(void)
     DataProvider_init();
     PacketEncoder_init();
     InitQamModulator();
-    InitDacDataRelay();
-    InitAdcDataRelay();
     InitQamDemodulator();
     PacketDecoder_init();
 
@@ -128,24 +88,6 @@ void app_init(void)
 #define TAG "QAM"
 
 #define UPDATETIME_MS 100
-
-/*
-void QAM_receive_Data(void* param) {
-    //Init stuff here
-    ESP_LOGI(TAG, "Task started!");
-    for(;;) {
-        vTaskDelay(100);
-
-        //uint16_t adcBuffer[256];
-        
-        if(QAM_receive)        // ein Datenblock wurde komplett empfangen
-        {
-            //led_toggle(LED1);
-            uint64_t d = QAM_get_Data();
-            ESP_LOGI(TAG, "QAM Data = 0x%016" PRIx64, d);
-        }
-    }
-}*/
 
 
 void app_main()
