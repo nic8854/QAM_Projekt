@@ -80,7 +80,7 @@ void adc_callback_function(){
 
         for (int i = 0; i < ADC_BUFFER_SIZE-1; i++)
         {
-            max_steilheit = (float)((sync_Amplitude * PI) / (Sin_Cosin_Buffer_Size/2) + 20);
+            max_steilheit = (float)((sync_Amplitude * PI) / (Sin_Cosin_Buffer_Size/2) + 50);
 
             if (abs(adcQAMBuffer[i+1] - adcQAMBuffer[i]) > max_steilheit)
             {
@@ -249,14 +249,15 @@ uint64_t map_QAM_Buffer(int16_t *adcBuf)
 ////////////////////////////////////////// API
 
 
-void QamDemodulator(){
+void QamDemodulator(void *param){
     while(1){
-        vTaskDelay(300);
+        vTaskDelay(100);
         if (Buffer_compl)
         {   
             for (size_t i = 0; i < ADC_Read_BUFFER_SIZE; i++)
             {
                 //printf("%d\n", adcReadBuffer[i]);
+                //vTaskDelay(0);
             }
             Data = map_QAM_Buffer(adcReadBuffer);
             Buffer_compl = false;
