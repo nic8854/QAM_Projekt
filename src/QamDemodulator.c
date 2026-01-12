@@ -1,4 +1,5 @@
 #include "QamDemodulator.h"
+#include "PacketDecoder.h"
 
 #include "esp_log.h"
 #include "esp_rom_sys.h"
@@ -9,7 +10,7 @@
 
 #define TAG "QAM"
 
-
+#if defined(QAM_RX_MODE) || defined(QAM_TRX_MODE)
 
 #if defined(QAM_RX_MODE)
     #define Invert      -1
@@ -264,7 +265,7 @@ void QamDemodulator(void *param){
             printf("QAM Packet = 0x%016llX\n", (unsigned long long)Data);
             
             
-            QamDemodulator_receivePacket(Data);
+            PacketDecoder_receivePacket(Data);
         }
     }
 }
@@ -293,3 +294,5 @@ void QamDemodulator_init(){
                 5,             //Priority
                 NULL);          //Taskhandle
 }
+
+#endif
