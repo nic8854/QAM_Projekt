@@ -8,8 +8,16 @@
 //    Juventus Technikerschule - Embedded Systems
 //    Version: 1.0.0
 //    
-//    *insert projekt description here*
-//    
+//    This program uses QAM (Quadrant Amplitude Modulation) for communicating wirelessly
+//    between a sender and a receiver device. The code can be use for both devices and can be
+//    configured in the File:
+//    QAM_PROJECT > eduboard2 > eduboard2_config.h
+//    There the program can be set to either sender, receiver or transceiver. When in mode
+//    transceiver, there are a multiple of route options to choose (please see documentation).
+//
+//    At this point the sender-program sends data as the temperature value or an example text
+//    encoded in a custom protocol via QAM to an RF-Module. The receiver-program receives the
+//    data, decodes and displays it on the LCD-Screen.
 //    
 /********************************************************************************************* */
 
@@ -45,14 +53,12 @@ void app_init(void)
     DataProvider_init();
     PacketEncoder_init();
     QamModulator_init();
-    //InitDacDataRelay();
 
 #elif defined(QAM_RX_MODE)
 
-    //InitAdcDataRelay();
     QamDemodulator_init();
-    //PacketDecoder_init();
-    //GuiDriver_init();
+    PacketDecoder_init();
+    GuiDriver_init();
 
 #elif defined(QAM_TRX_MODE)
 

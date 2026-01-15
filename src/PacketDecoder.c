@@ -42,7 +42,9 @@ static void PacketDecoder_task(void *pvParameters) {
                     float temperature;
                     memcpy(&temperature, &data, sizeof(float));
                     ESP_LOGI(TAG, "Temperature command received: %.2fC", temperature);
-                    GuiDriver_receiveTemperature(temperature);
+                    #if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+                        GuiDriver_receiveTemperature(temperature);
+                    #endif
                     break;
                 }
                 case 0x20: {
@@ -53,7 +55,9 @@ static void PacketDecoder_task(void *pvParameters) {
                     text[2] = (char)((data >> 8) & 0xFF);
                     text[3] = (char)(data & 0xFF);
                     ESP_LOGI(TAG, "Text command received: %c%c%c%c", text[0], text[1], text[2], text[3]);
-                    GuiDriver_receiveText(text);
+                    #if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+                        GuiDriver_receiveTemperature(text);
+                    #endif
                     break;
                 }
                 default:
