@@ -32,10 +32,13 @@ static void PacketDecoder_task(void *pvParameters) {
 
             // Verify checksum
             if (!PacketDecoder_verifyChecksum__(packet)) {
-                ESP_LOGE(TAG, "Checksum verification failed! Expected: 0x%02X, Got: 0x%02X", 
+                ESP_LOGW(TAG, "Checksum verification failed! Expected: 0x%02X, Got: 0x%02X", 
                          PacketDecoder_calcChecksum__(packet), PacketDecoder_getChecksumByte__(packet));
                 droppedPackets++;
-                GuiDriver_receiveDroppedPackets(droppedPackets);
+                ESP_LOGE(TAG, "Dropping packet. Total dropped: %d", droppedPackets);
+                #if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+                    GuiDriver_receiveDroppedPackets(droppedPackets);
+                #endif
                 continue;
             }
 
@@ -66,7 +69,10 @@ static void PacketDecoder_task(void *pvParameters) {
                 default:
                     ESP_LOGW(TAG, "Unknown command: 0x%02X", PacketDecoder_getCmd__(packet));
                     droppedPackets++;
-                    GuiDriver_receiveDroppedPackets(droppedPackets);
+                    ESP_LOGE(TAG, "Dropping packet. Total dropped: %d", droppedPackets);
+                    #if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+                        GuiDriver_receiveDroppedPackets(droppedPackets);
+                    #endif
                     break;
             }
         }
