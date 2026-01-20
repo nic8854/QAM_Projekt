@@ -99,7 +99,7 @@ void QamModulator(void *pvParameters)
 
     while (1)
     {
-        vTaskDelay(100);
+        vTaskDelay(500);
         if (xQueueReceive(packetQueue, &packet, portMAX_DELAY) == pdTRUE) {
             ESP_LOGI(TAG, "DATA COMPUTED");
             Qam_Burst(packet);
