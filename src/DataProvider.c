@@ -7,7 +7,7 @@
 #define TAG "DataProvider"
 
 // Wie oft Daten gesendet werden [ms]
-#define DATAPROVIDER_PERIOD_MS       1000
+#define DATAPROVIDER_PERIOD_MS       3000
 #define DATAPROVIDER_TEXT_PERIOD_MS  30000
 
 char s_exampleText[] = "Hallo von QAM, das ist ein Test.\0";

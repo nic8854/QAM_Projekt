@@ -265,7 +265,7 @@ void QamDemodulator(void *param){
             printf("QAM Packet = 0x%016llX\n", (unsigned long long)Data);
             
             
-            QamDemodulator_receivePacket(Data);
+            PacketDecoder_receivePacket(Data);
         }
     }
 }
