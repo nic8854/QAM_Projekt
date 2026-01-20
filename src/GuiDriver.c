@@ -13,7 +13,10 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
+
+
+#if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+
 
 // -------------------- Settings --------------------
 #define GUI_PERIOD_MS          100      // Display refresh
@@ -29,7 +32,7 @@
 #define HEADER_X               10
 #define HEADER_Y               30
 
-// Wenn du lieber fixen Bereich willst:
+//fixen Bereich oder autoscale:
 //#define USE_AUTOSCALE          1
 #define TEMP_MIN_FIXED         15.0f
 #define TEMP_MAX_FIXED         35.0f
@@ -43,7 +46,7 @@ typedef struct {
     float tempC;
 } GuiSample_t;
 
-// Separate Message-Struktur für Text-Queue (4 Zeichen)
+
 // WICHTIG: nicht null-terminiert in der Queue, wird erst für Anzeige terminiert
 typedef struct {
     char text[4];
@@ -51,7 +54,7 @@ typedef struct {
 
 static QueueHandle_t s_guiQ = NULL;
 
-// zweite Queue für Text 
+
 static QueueHandle_t s_textQ = NULL; 
 
 static float  s_hist[HISTORY_LEN];
@@ -66,10 +69,7 @@ static char s_latestText[5] = "----"; // 4 Zeichen + '\0'
 static uint32_t s_dropTemp = 0; 
 static uint32_t s_dropText = 0; 
 
-//  NEU: zusammengeführte Textzeile (mindestens 48 Zeichen) für die Anzeige
-//  - Wir speichern IMMER exakt die letzten 48 Zeichen (Rolling Window)
-//  - Neue 4-Zeichen-Blöcke werden rechts angehängt, links fällt entsprechend weg
-//  - Für lcdDrawString terminieren wir mit '\0'
+
 #define GUI_TEXT_LINE_LEN      48
 static char s_textLine[GUI_TEXT_LINE_LEN + 1]; // 48 Zeichen + '\0'
 
@@ -121,7 +121,7 @@ static uint8_t temp_to_u8(float t, float tMin, float tMax)
     return (uint8_t)(n * 255.0f);
 }
 
-//  NEU: 4 Zeichen in die 48-Zeichen-Anzeigezeile einfügen (Rolling Window)
+//   4 Zeichen in die 48-Zeichen-Anzeigezeile einfügen (Rolling Window)
 //  - schiebt die bestehende Zeile um 4 nach links
 //  - hängt die neuen 4 Zeichen rechts an
 /*static void textline_push4(const char in4[4])
@@ -174,32 +174,12 @@ static void draw_screen(void)
 
 
 
-    //  Anzeige vom letzten Text (4 Zeichen)
-    
-    //  NEU: zusammengeführte Textzeile (48 Zeichen) unter "Current" ausgeben
-    //  - Die Zeile ist IMMER mindestens 48 Zeichen lang (intern 48 Zeichen + '\0')
-    //  - Auf dem Display zeigen wir exakt 48 Zeichen an (ggf. mit Leerzeichen aufgefüllt)
-    //char textLine[64]; 
-    //snprintf(textLine, sizeof(textLine), "Text: %.48s", s_textLine); 
-    //lcdDrawString(fx24M, 10, 85, textLine, WHITE); //  unter Current (Position ggf. anpassen)
-
-    //  NEU: führende Leerzeichen für die Anzeige überspringen
-//  - Intern bleibt s_textLine weiterhin exakt 48 Zeichen lang
-//  - Auf dem Display wird links kein "leerer Abstand" angezeigt
-/*const char *p = s_textLine;
-while (*p == ' ' && *(p + 1) != '\0') {
-    p++;   // führende Leerzeichen überspringen
-}
-*/
+   
 char textLine[64];
 snprintf(textLine, sizeof(textLine), "Text: %s", s_textLine);
 lcdDrawString(fx24M, 10, 85, textLine, WHITE); // unter "Current"
 
-/*
-char textLine[64];
-snprintf(textLine, sizeof(textLine), "Text: %s", p);
-lcdDrawString(fx24M, 10, 85, textLine, WHITE); // unter "Current"
-*/
+
 
     // Plot-Rahmen
     lcdDrawRect(PLOT_X, PLOT_Y, PLOT_X + PLOT_W, PLOT_Y + PLOT_H, BLUE);
@@ -262,12 +242,12 @@ static void GuiDriver_task(void *pv)
 
         // Text-Queue ebenfalls leeren, aktuellsten Text behalten
         GuiText_t t; 
-        //  NEU: alle anstehenden 4-Zeichen-Blöcke abholen und in die 48-Zeichen-Zeile einfügen
+        //   alle anstehenden 4-Zeichen-Blöcke abholen und in die 48-Zeichen-Zeile einfügen
         if (xQueueReceive(s_textQ, &t, 0) == pdTRUE) { 
             memcpy(s_latestText, t.text, 4); // exakt 4 chars
             s_latestText[4] = '\0';          //  für Anzeige terminieren
 
-            //  NEU: 4 Zeichen an die Laufzeile anhängen (Rolling Window)
+            //   4 Zeichen an die Laufzeile anhängen (Rolling Window)
             textline_push4(t.text);
         }
 
@@ -315,7 +295,7 @@ bool GuiDriver_receiveTemperature(float tempC)
     if (s_guiQ == NULL) return false;
     GuiSample_t s = {.tempC = tempC};
 
-    // CHANGE: Drop zählen, falls Queue voll ist (statt still fehlschlagen)
+    // CHANGE: Drop zählen, falls Queue voll ist 
     if (xQueueSend(s_guiQ, &s, 0) != pdTRUE) { // CHANGE
         s_dropTemp++;                          
         return false;
@@ -323,7 +303,7 @@ bool GuiDriver_receiveTemperature(float tempC)
     return true;
 }
 
-// Text-Empfangsfunktion laut API (4 Zeichen pro Element)
+// Text-Empfangsfunktion laut API 
 bool GuiDriver_receiveText(char text[4]) 
 {
     if (s_textQ == NULL) return false;
