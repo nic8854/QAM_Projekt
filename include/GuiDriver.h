@@ -8,4 +8,6 @@ void GuiDriver_init(void);
 bool GuiDriver_receiveTemperature(float temperature);
 bool GuiDriver_receiveText(char text[4]);
 
+bool GuiDriver_receiveDroppedPackets(uint32_t dropped);
+
 #endif

@@ -16,7 +16,7 @@
 
 
 #if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
-
+static const char *TAG = "PacketDecoder";
 
 // -------------------- Settings --------------------
 #define GUI_PERIOD_MS          100      // Display refresh
@@ -50,12 +50,19 @@ typedef struct {
 // WICHTIG: nicht null-terminiert in der Queue, wird erst für Anzeige terminiert
 typedef struct {
     char text[4];
-} GuiText_t; 
+} GuiText_t;
 
 static QueueHandle_t s_guiQ = NULL;
 
 
-static QueueHandle_t s_textQ = NULL; 
+static QueueHandle_t s_textQ = NULL;
+
+// --- NEU: Queue für extern gemeldete verworfene Pakete ---
+static QueueHandle_t s_dropPktQ = NULL;
+static uint32_t s_dropPktExternal = 0;   // extern gemeldete Drops (aufsummiert)
+static uint32_t s_dropPktOverflow = 0;   // Queue voll -> Meldung verloren
+// --------------------------------------------------------
+
 
 static float  s_hist[HISTORY_LEN];
 static uint16_t s_head = 0;
@@ -66,8 +73,8 @@ static float s_latest = NAN;
 static char s_latestText[5] = "----"; // 4 Zeichen + '\0'
 
 //  Statistik: wie viele Werte beim Senden verworfen wurden (Queue voll)
-static uint32_t s_dropTemp = 0; 
-static uint32_t s_dropText = 0; 
+static uint32_t s_dropTemp = 0;
+static uint32_t s_dropText = 0;
 
 
 #define GUI_TEXT_LINE_LEN      48
@@ -195,10 +202,17 @@ lcdDrawString(fx24M, 10, 85, textLine, WHITE); // unter "Current"
 
     //  Statistik anzeigen (wie gut das System performt)
     //  Drop-Counter (Queue voll -> Werte verworfen)
-    char statTxt[64]; 
-    snprintf(statTxt, sizeof(statTxt), "drops T:%lu X:%lu",
-             (unsigned long)s_dropTemp, (unsigned long)s_dropText); 
-    lcdDrawString(fx16M, PLOT_X + 10, PLOT_Y + 28, statTxt, WHITE); 
+    char statTxt[64];
+    snprintf(statTxt, sizeof(statTxt), "drops T:%lu X:%lu RX:%lu",
+             (unsigned long)s_dropTemp, (unsigned long)s_dropText,
+             (unsigned long)s_dropPktExternal);
+    lcdDrawString(fx16M, PLOT_X + 10, PLOT_Y + 28, statTxt, WHITE);
+
+    // (optional) Overflow der DropPkt-Queue anzeigen
+    char statTxt2[64];
+    snprintf(statTxt2, sizeof(statTxt2), "RX-ovf:%lu",
+             (unsigned long)s_dropPktOverflow);
+    lcdDrawString(fx16M, PLOT_X + 10, PLOT_Y + 44, statTxt2, WHITE);
 
     // Verlauf in uint8 umrechnen für lcdDrawDataUInt8
     static uint8_t plotBuf[HISTORY_LEN];
@@ -241,15 +255,22 @@ static void GuiDriver_task(void *pv)
         }
 
         // Text-Queue ebenfalls leeren, aktuellsten Text behalten
-        GuiText_t t; 
+        GuiText_t t;
         //   alle anstehenden 4-Zeichen-Blöcke abholen und in die 48-Zeichen-Zeile einfügen
-        if (xQueueReceive(s_textQ, &t, 0) == pdTRUE) { 
+        if (xQueueReceive(s_textQ, &t, 0) == pdTRUE) {
             memcpy(s_latestText, t.text, 4); // exakt 4 chars
             s_latestText[4] = '\0';          //  für Anzeige terminieren
 
             //   4 Zeichen an die Laufzeile anhängen (Rolling Window)
             textline_push4(t.text);
         }
+
+        // --- NEU: DropPkt-Queue leeren (alle Meldungen aufsummieren) ---
+        uint32_t drops;
+        while (xQueueReceive(s_dropPktQ, &drops, 0) == pdTRUE) {
+            s_dropPktExternal = drops;
+        }
+        // ---------------------------------------------------------------
 
         draw_screen();
 
@@ -258,14 +279,18 @@ static void GuiDriver_task(void *pv)
 }
 
 
-void GuiDriver_init(void) 
+void GuiDriver_init(void)
 {
     lcdFillScreen(BLACK);
     // Queue
     s_guiQ = xQueueCreate(GUI_QUEUE_LEN, sizeof(GuiSample_t));
 
     //Text-Queue erzeugen
-    s_textQ = xQueueCreate(GUI_QUEUE_LEN, sizeof(GuiText_t)); 
+    s_textQ = xQueueCreate(GUI_QUEUE_LEN, sizeof(GuiText_t));
+
+    // --- NEU: Queue für extern gemeldete verworfene Pakete ---
+    s_dropPktQ = xQueueCreate(GUI_QUEUE_LEN, sizeof(uint32_t));
+    // ---------------------------------------------------------
 
     // History reset
     memset(s_hist, 0, sizeof(s_hist));
@@ -275,8 +300,13 @@ void GuiDriver_init(void)
 
     //  Text + Stats reset
     memcpy(s_latestText, "----", 5);
-    s_dropTemp = 0;                 
-    s_dropText = 0;                 
+    s_dropTemp = 0;
+    s_dropText = 0;
+
+    // --- NEU: DropPkt Stats reset ---
+    s_dropPktExternal = 0;
+    s_dropPktOverflow = 0;
+    // -------------------------------
 
     // Task starten
     xTaskCreate(
@@ -290,32 +320,49 @@ void GuiDriver_init(void)
 }
 
 
-bool GuiDriver_receiveTemperature(float tempC) 
+bool GuiDriver_receiveTemperature(float tempC)
 {
     if (s_guiQ == NULL) return false;
     GuiSample_t s = {.tempC = tempC};
 
-    // CHANGE: Drop zählen, falls Queue voll ist 
+    // CHANGE: Drop zählen, falls Queue voll ist
     if (xQueueSend(s_guiQ, &s, 0) != pdTRUE) { // CHANGE
-        s_dropTemp++;                          
+        s_dropTemp++;
         return false;
     }
     return true;
 }
 
-// Text-Empfangsfunktion laut API 
-bool GuiDriver_receiveText(char text[4]) 
+// Text-Empfangsfunktion laut API
+bool GuiDriver_receiveText(char text[4])
 {
     if (s_textQ == NULL) return false;
 
-    GuiText_t t;                 
+    GuiText_t t;
     memcpy(t.text, text, 4);     //  genau 4 Zeichen übernehmen
 
     //  Drop zählen, falls Queue voll ist
-    if (xQueueSend(s_textQ, &t, 0) != pdTRUE) { 
-        s_dropText++;                            
+    if (xQueueSend(s_textQ, &t, 0) != pdTRUE) {
+        s_dropText++;
         return false;
     }
     return true;
 }
+
+// --- NEU: Empfangsfunktion für extern verworfene Pakete ---
+bool GuiDriver_receiveDroppedPackets(uint32_t dropped)
+{
+    ESP_LOGE(TAG, "dropped = %d", dropped);
+    if (s_dropPktQ == NULL) return false;
+
+    if (xQueueSend(s_dropPktQ, &dropped, 0) != pdTRUE) {
+        //s_dropPktOverflow++;
+
+        return false;
+    }
+    return true;
+}
+// ---------------------------------------------------------
+
+
 #endif
