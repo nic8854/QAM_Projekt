@@ -56,7 +56,7 @@ static void PacketDecoder_task(void *pvParameters) {
                     text[3] = (char)(data & 0xFF);
                     ESP_LOGI(TAG, "Text command received: %c%c%c%c", text[0], text[1], text[2], text[3]);
                     #if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
-                        GuiDriver_receiveTemperature(text);
+                        GuiDriver_receiveText(text);
                     #endif
                     break;
                 }

@@ -52,7 +52,7 @@ uint8_t PacketEncoder_calcChecksum(uint8_t syncByte,
 // byte8: CHECKSUM
 uint64_t PacketEncoder_buildFrame(uint32_t payload, uint8_t cmd, uint8_t param)
 {
-    uint8_t syncByte  = 0xFF;
+    uint8_t syncByte  = 0x00;
     uint8_t cmdByte   = cmd;
     uint8_t paramByte = param;
 
