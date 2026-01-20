@@ -2,6 +2,24 @@
 #define EDUBOARD_CPU_BOARD_ESP32_S3
 //#define EDUBOARD_CPU_BOARD_ATMEGA328PB
 
+// ------------------------------ PROGRAM CONFIG ------------------------------ //
+
+// Mode select
+
+#define QAM_TX_MODE             // Transmitter
+//#define QAM_RX_MODE             // Receiver
+//#define QAM_TRX_MODE            // Transceiver
+
+// Route select
+#if defined(QAM_TRX_MODE)
+
+  #define TRX_ROUTE_PACKET      // PacketEncoder -> PacketDecoder (without Modem)
+  //#define TRX_ROUTE_MODEM       // Modulator -> Demodulator (digital loopback)
+  //#define TRX_ROUTE_FULL        // Modulator -> DAC -> ADC -> Demodulator (full)
+
+#endif
+// ---------------------------------------------------------------------------- //
+
 /*LED Config*/
 #define CONFIG_ENABLE_LED0
 #define CONFIG_ENABLE_LED1
@@ -37,9 +55,9 @@
 // #define CONFIG_ADC_DEBUG
 #ifdef CONFIG_ENABLE_ADC_STREAMING
     #define CONFIG_ADC_STREAMING_BUFFERSIZE 256
-    // #define ADC_STREAM_SAMPLERATE_US    50
+     #define ADC_STREAM_SAMPLERATE_US    50
     // #define ADC_STREAM_SAMPLERATE_US    60
-     #define ADC_STREAM_SAMPLERATE_US    100
+    // #define ADC_STREAM_SAMPLERATE_US    100
     // #define ADC_STREAM_SAMPLERATE_US    120
     // #define ADC_STREAM_SAMPLERATE_US    200
     // #define ADC_STREAM_SAMPLERATE_US    240
@@ -49,12 +67,15 @@
 
 
 /*DAC Output Config*/
-#define CONFIG_ENABLE_DAC
+#if defined(QAM_TX_MODE) || (defined(QAM_TRX_MODE) && !defined(TRX_ROUTE_PACKET))
+    #define CONFIG_ENABLE_DAC
+#endif
+
 #ifdef CONFIG_ENABLE_DAC
     #define CONFIG_DAC_STREAMING
     #ifdef CONFIG_DAC_STREAMING
-        #define CONFIG_DAC_STREAMING_BUFFERSIZE 128
-        // #define DAC_STREAM_SAMPLERATE    50
+        #define CONFIG_DAC_STREAMING_BUFFERSIZE 64
+        //#define DAC_STREAM_SAMPLERATE    50
         // #define DAC_STREAM_SAMPLERATE    60
          #define DAC_STREAM_SAMPLERATE    100
         // #define DAC_STREAM_SAMPLERATE    120
@@ -64,11 +85,15 @@
     #endif
 #endif
 
+
 /*LCD Config*/
-// #define CONFIG_ENABLE_LCD
+#if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+    #define CONFIG_ENABLE_LCD
+#endif
+
 #ifdef CONFIG_ENABLE_LCD
     // #define CONFIG_LCD_ST7789
-    // #define CONFIG_LCD_ILI9488
+    #define CONFIG_LCD_ILI9488
     
     // #define CONFIG_LCD_RESOLUTION_240x240
     // #define CONFIG_LCD_RESOLUTION_240x320

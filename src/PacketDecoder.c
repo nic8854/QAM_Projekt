@@ -1,10 +1,13 @@
 #include "PacketDecoder.h"
+#include "GuiDriver.h"
 
 #include "math.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+
+#if defined(QAM_RX_MODE) || defined(QAM_TRX_MODE)
 
 static const char *TAG = "PacketDecoder";
 
@@ -23,7 +26,7 @@ static void PacketDecoder_task(void *pvParameters) {
     uint64_t packet;
     
     while (1) {
-        if (xQueueReceive(packetQueue, &packet, portMAX_DELAY) == pdTRUE) {
+        if (xQueueReceive(packetQueue, &packet, pdMS_TO_TICKS(50)) == pdTRUE) {
             ESP_LOGI(TAG, "Received packet: 0x%llX", packet);
             
             // Verify checksum
@@ -39,6 +42,22 @@ static void PacketDecoder_task(void *pvParameters) {
                     float temperature;
                     memcpy(&temperature, &data, sizeof(float));
                     ESP_LOGI(TAG, "Temperature command received: %.2fC", temperature);
+                    #if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+                        GuiDriver_receiveTemperature(temperature);
+                    #endif
+                    break;
+                }
+                case 0x20: {
+                    uint32_t data = PacketDecoder_getData__(packet);
+                    char text[4];
+                    text[0] = (char)((data >> 24) & 0xFF);
+                    text[1] = (char)((data >> 16) & 0xFF);
+                    text[2] = (char)((data >> 8) & 0xFF);
+                    text[3] = (char)(data & 0xFF);
+                    ESP_LOGI(TAG, "Text command received: %c%c%c%c", text[0], text[1], text[2], text[3]);
+                    #if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+                        GuiDriver_receiveText(text);
+                    #endif
                     break;
                 }
                 default:
@@ -46,6 +65,7 @@ static void PacketDecoder_task(void *pvParameters) {
                     break;
             }
         }
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -115,3 +135,5 @@ bool PacketDecoder_verifyChecksum__(uint64_t packet) {
     uint8_t receivedChecksum = PacketDecoder_getChecksumByte__(packet);
     return (calculatedChecksum == receivedChecksum);
 }
+
+#endif

@@ -6,54 +6,69 @@
 
 #define TAG "DataProvider"
 
-// Wie oft die Temperatur gelesen wird [ms]
-#define DATAPROVIDER_PERIOD_MS  1000
+// Wie oft Daten gesendet werden [ms]
+#define DATAPROVIDER_PERIOD_MS       1000
+#define DATAPROVIDER_TEXT_PERIOD_MS  30000
+
+char s_exampleText[] = "Hallo von QAM, das ist ein Test.\0";
+
+void DataProvider_sendExampleText(void)
+{
+    for (size_t i = 0;; i++)
+    {
+        const uint8_t text = (uint8_t)s_exampleText[i];
+
+        if (!PacketEncoder_receiveTextByte(text))
+        {
+            ESP_LOGW(TAG, "Text-Queue voll, Text abgebrochen (Byte 0x%02X)", text);
+            return;
+        }
+
+        if (text == '\0')
+            return;
+    }
+}
 
 // -----------------------------------------------------------------------------
 // DataProvider task
 // -----------------------------------------------------------------------------
-
 void DataProvider_task(void *pvParameters)
 {
     (void)pvParameters;
 
     TickType_t lastWakeTime = xTaskGetTickCount();
-    uint16_t sampleCounter  = 0; // Debug
+    TickType_t lastTextTime = lastWakeTime;
 
     for (;;)
     {
-        // Temperatur aus Sensor lesen [°C]
+        // --- Temperatur senden ---
         float temperature = tmp112_get_value();
 
-        // 32-Bit Payload
         uint32_t payload;
-
         memcpy(&payload, &temperature, sizeof(float));
 
-        // in PacketEncoder schieben
-        if (!PacketEncoder_receiveData(payload))
+        if (!PacketEncoder_receiveTemperature(payload))
+            ESP_LOGW(TAG, "PacketEncoder payload-queue full, dropping sample");
+
+
+        // --- Beispieltext senden ---
+        TickType_t now = xTaskGetTickCount();
+        if ((now - lastTextTime) >= pdMS_TO_TICKS(DATAPROVIDER_TEXT_PERIOD_MS))
         {
-            ESP_LOGW(TAG,
-                     "PacketEncoder queue full, dropping sample %u",
-                     (unsigned int)sampleCounter);
+            DataProvider_sendExampleText();
+            lastTextTime = now;
         }
 
-        sampleCounter++;
-
-        // Debug
-        //ESP_LOGI(TAG, "Temp=%.4f°C -> payload=0x%08X", temperature, payload);
-
-        // auf nächste Periode warten
         vTaskDelayUntil(&lastWakeTime, pdMS_TO_TICKS(DATAPROVIDER_PERIOD_MS));
     }
 }
 
 void DataProvider_init(void)
 {
-    xTaskCreate(DataProvider_task,  //Subroutine
-        "DataProvider",             //Name
-        2*2048,                     //Stacksize
-        NULL,                       //Parameters
-        5,                          //Priority
-        NULL);                      //Taskhandle
+    xTaskCreate(DataProvider_task,
+                "DataProvider",
+                2*2048,
+                NULL,
+                5,
+                NULL);
 }
