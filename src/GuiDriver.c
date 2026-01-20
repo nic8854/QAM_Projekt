@@ -6,33 +6,17 @@
 /********************************************************************************************* */
 
 
-
-/*
-Description
-This module displays the received value as well as displaying different statistics on how the system is performing.
-
-API
-Init Function
-void GuiDriver_init();
-This function initializes the module
-
-bool GuiDriver_receiveTemperature(float temperature);
-This function is responsible for feeding the internal temperature queue with float values.
-
-bool GuiDriver_receiveText(char text[4]);
-This function is responsible for feeding the internal text queue. Each queue element conatins 4 text characters.
-*/
-
-
-
 #include "eduboard2.h"
 #include "GuiDriver.h"
 
 
-#include "math.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
+
+
+#if defined(QAM_RX_MODE) || (defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET))
+
 
 // -------------------- Settings --------------------
 #define GUI_PERIOD_MS          100      // Display refresh
@@ -48,14 +32,13 @@ This function is responsible for feeding the internal text queue. Each queue ele
 #define HEADER_X               10
 #define HEADER_Y               30
 
-// Wenn du lieber fixen Bereich willst:
+//fixen Bereich oder autoscale:
 //#define USE_AUTOSCALE          1
 #define TEMP_MIN_FIXED         15.0f
 #define TEMP_MAX_FIXED         35.0f
 // --------------------------------------------------
 
-// CHANGE: Plot-Breite an HISTORY_LEN anpassen, damit Rahmen und Datenbreite zusammenpassen
-// (lcdDrawDataUInt8 zeichnet hier HISTORY_LEN Samples -> Rahmen muss gleich breit sein)
+
 #undef  PLOT_W
 #define PLOT_W                 HISTORY_LEN   // CHANGE: vorher 410
 
@@ -63,7 +46,7 @@ typedef struct {
     float tempC;
 } GuiSample_t;
 
-// Separate Message-Struktur für Text-Queue (4 Zeichen)
+
 // WICHTIG: nicht null-terminiert in der Queue, wird erst für Anzeige terminiert
 typedef struct {
     char text[4];
@@ -71,7 +54,7 @@ typedef struct {
 
 static QueueHandle_t s_guiQ = NULL;
 
-// zweite Queue für Text 
+
 static QueueHandle_t s_textQ = NULL; 
 
 static float  s_hist[HISTORY_LEN];
@@ -85,6 +68,10 @@ static char s_latestText[5] = "----"; // 4 Zeichen + '\0'
 //  Statistik: wie viele Werte beim Senden verworfen wurden (Queue voll)
 static uint32_t s_dropTemp = 0; 
 static uint32_t s_dropText = 0; 
+
+
+#define GUI_TEXT_LINE_LEN      48
+static char s_textLine[GUI_TEXT_LINE_LEN + 1]; // 48 Zeichen + '\0'
 
 static void hist_push(float v)
 {
@@ -134,6 +121,41 @@ static uint8_t temp_to_u8(float t, float tMin, float tMax)
     return (uint8_t)(n * 255.0f);
 }
 
+//   4 Zeichen in die 48-Zeichen-Anzeigezeile einfügen (Rolling Window)
+//  - schiebt die bestehende Zeile um 4 nach links
+//  - hängt die neuen 4 Zeichen rechts an
+/*static void textline_push4(const char in4[4])
+{
+    memmove(&s_textLine[0], &s_textLine[4], GUI_TEXT_LINE_LEN - 4);
+    memcpy(&s_textLine[GUI_TEXT_LINE_LEN - 4], in4, 4);
+    s_textLine[GUI_TEXT_LINE_LEN] = '\0';
+}
+*/
+
+static void textline_push4(const char in4[4])
+{
+    uint16_t len = (uint16_t)strlen(s_textLine);
+
+    // Wenn voll: Rolling Window (links 4 weg)
+    if (len >= GUI_TEXT_LINE_LEN) {
+        memmove(&s_textLine[0], &s_textLine[4], GUI_TEXT_LINE_LEN - 4);
+        len = (uint16_t)(GUI_TEXT_LINE_LEN - 4);
+        s_textLine[len] = '\0';
+    }
+
+    // Falls weniger als 4 Platz: so kürzen, dass 4 reinpassen
+    if (len > (GUI_TEXT_LINE_LEN - 4)) {
+        uint16_t overflow = (uint16_t)(len - (GUI_TEXT_LINE_LEN - 4));
+        memmove(&s_textLine[0], &s_textLine[overflow], (size_t)(len - overflow));
+        len = (uint16_t)(len - overflow);
+        s_textLine[len] = '\0';
+    }
+
+    // 4 Zeichen anhängen
+    memcpy(&s_textLine[len], in4, 4);
+    s_textLine[len + 4] = '\0';
+}
+
 static void draw_screen(void)
 {
    lcdFillScreen(BLACK);
@@ -150,11 +172,14 @@ static void draw_screen(void)
     }
     lcdDrawString(fx24M, 10, 60, line, WHITE);
 
-    //  Anzeige vom letzten Text (4 Zeichen)
-    
-    char textLine[32]; 
-    snprintf(textLine, sizeof(textLine), "Text: %s", s_latestText); 
-    lcdDrawString(fx24M, 260, 60, textLine, WHITE); //  (Position ggf. anpassen)
+
+
+   
+char textLine[64];
+snprintf(textLine, sizeof(textLine), "Text: %s", s_textLine);
+lcdDrawString(fx24M, 10, 85, textLine, WHITE); // unter "Current"
+
+
 
     // Plot-Rahmen
     lcdDrawRect(PLOT_X, PLOT_Y, PLOT_X + PLOT_W, PLOT_Y + PLOT_H, BLUE);
@@ -206,8 +231,6 @@ static void GuiDriver_task(void *pv)
     (void)pv;
     TickType_t last = xTaskGetTickCount();
 
-// TEST: einmal einen Wert schicken
- //   GuiDriver_pushTemperature(23.5f);
 
     for (;;) {
         // neue Samples abholen (alle, die anstehen)
@@ -219,9 +242,13 @@ static void GuiDriver_task(void *pv)
 
         // Text-Queue ebenfalls leeren, aktuellsten Text behalten
         GuiText_t t; 
+        //   alle anstehenden 4-Zeichen-Blöcke abholen und in die 48-Zeichen-Zeile einfügen
         if (xQueueReceive(s_textQ, &t, 0) == pdTRUE) { 
             memcpy(s_latestText, t.text, 4); // exakt 4 chars
             s_latestText[4] = '\0';          //  für Anzeige terminieren
+
+            //   4 Zeichen an die Laufzeile anhängen (Rolling Window)
+            textline_push4(t.text);
         }
 
         draw_screen();
@@ -230,8 +257,8 @@ static void GuiDriver_task(void *pv)
     }
 }
 
-// CHANGE: InitGuiDriver() -> GuiDriver_init() (laut geforderter API)
-void GuiDriver_init(void) // CHANGE: neuer API-Name
+
+void GuiDriver_init(void) 
 {
     lcdFillScreen(BLACK);
     // Queue
@@ -262,13 +289,13 @@ void GuiDriver_init(void) // CHANGE: neuer API-Name
     );
 }
 
-// CHANGE: GuiDriver_pushTemperature() -> GuiDriver_receiveTemperature() (laut API)
-bool GuiDriver_receiveTemperature(float tempC) // CHANGE: neuer API-Name
+
+bool GuiDriver_receiveTemperature(float tempC) 
 {
     if (s_guiQ == NULL) return false;
     GuiSample_t s = {.tempC = tempC};
 
-    // CHANGE: Drop zählen, falls Queue voll ist (statt still fehlschlagen)
+    // CHANGE: Drop zählen, falls Queue voll ist 
     if (xQueueSend(s_guiQ, &s, 0) != pdTRUE) { // CHANGE
         s_dropTemp++;                          
         return false;
@@ -276,7 +303,7 @@ bool GuiDriver_receiveTemperature(float tempC) // CHANGE: neuer API-Name
     return true;
 }
 
-// Text-Empfangsfunktion laut API (4 Zeichen pro Element)
+// Text-Empfangsfunktion laut API 
 bool GuiDriver_receiveText(char text[4]) 
 {
     if (s_textQ == NULL) return false;
@@ -291,3 +318,4 @@ bool GuiDriver_receiveText(char text[4])
     }
     return true;
 }
+#endif

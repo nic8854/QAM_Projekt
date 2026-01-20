@@ -52,7 +52,7 @@ uint8_t PacketEncoder_calcChecksum(uint8_t syncByte,
 // byte8: CHECKSUM
 uint64_t PacketEncoder_buildFrame(uint32_t payload, uint8_t cmd, uint8_t param)
 {
-    uint8_t syncByte  = 0xFF;
+    uint8_t syncByte  = 0x00;
     uint8_t cmdByte   = cmd;
     uint8_t paramByte = param;
 
@@ -82,12 +82,12 @@ uint64_t PacketEncoder_buildFrame(uint32_t payload, uint8_t cmd, uint8_t param)
 
 void PacketEncoder_forwardFrame(uint64_t frame)
 {
-    #if defined(TRX_ROUTE_PACKET)
+    #if defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET)
         if (!PacketDecoder_receivePacket(frame))
             ESP_LOGW(TAG, "PacketDecoder queue full, dropping frame");
     
-    #elif defined(TRX_ROUTE_MODEM) || defined(TRX_ROUTE_FULL)
-        if (!Qam_Burst(frame))
+    #else
+        if (!QamModulator_receivePacket(frame))
             ESP_LOGW(TAG, "QamModulator queue full, dropping frame");
     #endif
 }
@@ -130,6 +130,7 @@ void PacketEncoder_task(void *pvParameters)
 {
     (void)pvParameters;
 
+    uint32_t payload = 0;
     uint64_t frame = 0;
     uint8_t ch = 0;
     uint8_t shift = 0;
@@ -137,7 +138,6 @@ void PacketEncoder_task(void *pvParameters)
 
     for (;;)
     {
-        uint32_t payload = 0;
         if (xQueueReceive(s_packetEncoderTempQueue, &payload, 0) == pdTRUE)
         {
             frame = PacketEncoder_buildFrame(payload, CMD_Temp, 0);
@@ -156,6 +156,8 @@ void PacketEncoder_task(void *pvParameters)
             if (s_textCount >= 4 || ended) Text_sendPackedWord(ended);
         }
     }
+    
+    vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 

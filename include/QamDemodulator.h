@@ -7,7 +7,7 @@
 
 extern bool QAM_receive;
 
-void InitQamDemodulator();
+void QamDemodulator_init();
 void QamDemodulator();
 
 uint64_t QAM_get_Data();

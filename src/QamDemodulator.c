@@ -1,4 +1,5 @@
 #include "QamDemodulator.h"
+#include "PacketDecoder.h"
 
 #include "esp_log.h"
 #include "esp_rom_sys.h"
@@ -9,7 +10,7 @@
 
 #define TAG "QAM"
 
-
+#if defined(QAM_RX_MODE) || defined(QAM_TRX_MODE)
 
 #if defined(QAM_RX_MODE)
     #define Invert      -1
@@ -80,7 +81,7 @@ void adc_callback_function(){
 
         for (int i = 0; i < ADC_BUFFER_SIZE-1; i++)
         {
-            max_steilheit = (float)((sync_Amplitude * PI) / (Sin_Cosin_Buffer_Size/2) + 20);
+            max_steilheit = (float)((sync_Amplitude * PI) / (Sin_Cosin_Buffer_Size/2) + 50);
 
             if (abs(adcQAMBuffer[i+1] - adcQAMBuffer[i]) > max_steilheit)
             {
@@ -234,35 +235,42 @@ uint64_t map_QAM_Buffer(int16_t *adcBuf)
 
 
 
+// uint64_t QAM_get_Data()
+// {   
+//     uint64_t Data_out;
+//     led_toggle(LED6);
+//     QAM_receive = false;
+//     Data_out = Data;
+//     Data = 0xFFFF;
+//     return Data_out;
+// }
 
-uint64_t QAM_get_Data()
-{   
-    uint64_t Data_out;
-    led_toggle(LED6);
-    QAM_receive = false;
-    Data_out = Data;
-    Data = 0xFFFF;
-    return Data_out;
-}
 
 
-void QamDemodulator(){
+////////////////////////////////////////// API
+
+
+void QamDemodulator(void *param){
     while(1){
-    vTaskDelay(200);
-    if (Buffer_compl)
-    {   
-        for (size_t i = 0; i < ADC_Read_BUFFER_SIZE; i++)
-        {
-            //printf("%d\n", adcReadBuffer[i]);
+        vTaskDelay(100);
+        if (Buffer_compl)
+        {   
+            for (size_t i = 0; i < ADC_Read_BUFFER_SIZE; i++)
+            {
+                //printf("%d\n", adcReadBuffer[i]);
+                //vTaskDelay(0);
+            }
+            Data = map_QAM_Buffer(adcReadBuffer);
+            Buffer_compl = false;
+            printf("QAM Packet = 0x%016llX\n", (unsigned long long)Data);
+            
+            
+            PacketDecoder_receivePacket(Data);
         }
-        Data = map_QAM_Buffer(adcReadBuffer);
-    Buffer_compl = false;
-    printf("QAM Packet = 0x%016llX\n", (unsigned long long)Data);
     }
 }
-}
 
-void InitQamDemodulator(){
+void QamDemodulator_init(){
 
     sync_Amplitude = Ampl_Start;
     // Sinus und Cosiunustabelle erzeugen
@@ -286,3 +294,5 @@ void InitQamDemodulator(){
                 5,             //Priority
                 NULL);          //Taskhandle
 }
+
+#endif
