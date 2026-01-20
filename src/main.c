@@ -8,8 +8,16 @@
 //    Juventus Technikerschule - Embedded Systems
 //    Version: 1.0.0
 //    
-//    *insert projekt description here*
-//    
+//    This program uses QAM (Quadrant Amplitude Modulation) for communicating wirelessly
+//    between a sender and a receiver device. The code can be use for both devices and can be
+//    configured in the File:
+//    QAM_PROJECT > eduboard2 > eduboard2_config.h
+//    There the program can be set to either sender, receiver or transceiver. When in mode
+//    transceiver, there are a multiple of route options to choose (please see documentation).
+//
+//    At this point the sender-program sends data as the temperature value or an example text
+//    encoded in a custom protocol via QAM to an RF-Module. The receiver-program receives the
+//    data, decodes and displays it on the LCD-Screen.
 //    
 /********************************************************************************************* */
 
@@ -44,11 +52,11 @@ void app_init(void)
 
     DataProvider_init();
     PacketEncoder_init();
-    InitQamModulator();
+    QamModulator_init();
 
 #elif defined(QAM_RX_MODE)
 
-    InitQamDemodulator();
+    QamDemodulator_init();
     PacketDecoder_init();
     GuiDriver_init();
 
@@ -65,16 +73,16 @@ void app_init(void)
 
     DataProvider_init();
     PacketEncoder_init();
-    InitQamModulator();
-    InitQamDemodulator();
+    QamModulator_init();
+    QamDemodulator_init();
     PacketDecoder_init();
 
   #elif defined(TRX_ROUTE_FULL)
 
     DataProvider_init();
     PacketEncoder_init();
-    InitQamModulator();
-    InitQamDemodulator();
+    QamModulator_init();
+    QamDemodulator_init();
     PacketDecoder_init();
 
   #endif
@@ -95,7 +103,7 @@ void app_main()
     app_init();
 
     // Log Zeug deaktivieren
-    esp_log_level_set("*", ESP_LOG_INFO);
+    //esp_log_level_set("*", ESP_LOG_INFO);
 
 
     // Create templateTask
@@ -107,7 +115,9 @@ void app_main()
     //             NULL);          //Taskhandle
 
     for(;;) {
-        vTaskDelay(2000/portTICK_PERIOD_MS);
+        vTaskDelay(10000/portTICK_PERIOD_MS);
         //ESP_LOGI(TAG, "Hello Eduboard");
+       // Qam_Burst(0x0F0F0F0F0F0F0F0F);
+        //ESP_LOGI(TAG, "DATA SENT");
     }
 }

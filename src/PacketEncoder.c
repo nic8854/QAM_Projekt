@@ -82,12 +82,12 @@ uint64_t PacketEncoder_buildFrame(uint32_t payload, uint8_t cmd, uint8_t param)
 
 void PacketEncoder_forwardFrame(uint64_t frame)
 {
-    #if defined(QAM_TRX_MODE) || defined(TRX_ROUTE_PACKET)
+    #if defined(QAM_TRX_MODE) && defined(TRX_ROUTE_PACKET)
         if (!PacketDecoder_receivePacket(frame))
             ESP_LOGW(TAG, "PacketDecoder queue full, dropping frame");
     
     #else
-        if (!Qam_Burst(frame))
+        if (!QamModulator_receivePacket(frame))
             ESP_LOGW(TAG, "QamModulator queue full, dropping frame");
     #endif
 }

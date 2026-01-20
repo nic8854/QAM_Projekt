@@ -6,9 +6,9 @@
 
 // Mode select
 
-//#define QAM_TX_MODE             // Transmitter
+#define QAM_TX_MODE             // Transmitter
 //#define QAM_RX_MODE             // Receiver
-#define QAM_TRX_MODE            // Transceiver
+//#define QAM_TRX_MODE            // Transceiver
 
 // Route select
 #if defined(QAM_TRX_MODE)
