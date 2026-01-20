@@ -81,7 +81,7 @@ void adc_callback_function(){
 
         for (int i = 0; i < ADC_BUFFER_SIZE-1; i++)
         {
-            max_steilheit = (float)((sync_Amplitude * PI) / (Sin_Cosin_Buffer_Size/2) + 50);
+            max_steilheit = (float)((sync_Amplitude * PI) / (Sin_Cosin_Buffer_Size/2) + 100);
 
             if (abs(adcQAMBuffer[i+1] - adcQAMBuffer[i]) > max_steilheit)
             {
