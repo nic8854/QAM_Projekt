@@ -107,3 +107,6 @@ This function is responsible for feeding the internal temperature queue with flo
 
 <b>bool GuiDriver_receiveText(char text[4]);</b><br>
 This function is responsible for feeding the internal text queue. Each queue element conatins 4 text characters.
+
+<b>bool GuiDriver_receiveDroppedPackets(uint32_t dropped);</b><br>
+This function is responsible for feeding the internal dropped packets queue. Each queue element the current amount of dropped packets since boot in anuin32_t format.
